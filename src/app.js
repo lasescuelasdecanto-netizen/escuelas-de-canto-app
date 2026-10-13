@@ -44,7 +44,7 @@ function render() {
   const vistas = { inicio: vInicio, practicar: vPracticar, cuota: vCuota, novedades: vNovedades, escuela: vEscuela };
   const subvistas = {
     'practicar/rutina': vRutina, 'practicar/respiracion': vRespiracion, 'practicar/teclado': vTeclado,
-    'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/avisos': vAvisos,
+    'practicar/temas': vTemas, 'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/avisos': vAvisos,
   };
   const fn = sub ? subvistas[`${base}/${sub}`] : vistas[base];
   const html = (fn || vInicio)(arg);
@@ -292,6 +292,9 @@ function vPracticar() {
       <div class="botones">${hoyMin ? `<button class="btn sec" id="sumar">${I.check} Hoy: ${hoyMin} min · sumar 10 más</button>` : `<button class="btn borde" id="sumar">Practiqué hoy (10 min)</button>`}</div>
     </div>
 
+    <div class="fila entre" style="margin:26px 0 10px"><h3 style="margin:0">Mis temas</h3><button class="link" data-ir="practicar/temas">${S.get().temas.length ? 'Ver todos' : ''}</button></div>
+    ${bloqueTemas()}
+
     <h3>Rutinas guiadas</h3>
     <div class="lista">${RUTINAS.map((r) => `<button class="item" data-ir="practicar/rutina/${r.id}"><div class="icono-circ">${I.reloj}</div>
       <div class="txt"><div class="tit">${r.nombre}</div><div class="chico">${r.minutos} min · ${r.para}</div></div><span class="flecha">›</span></button>`).join('')}</div>
@@ -306,7 +309,111 @@ function vPracticar() {
 }
 montajes.practicar = () => {
   $('#sumar').onclick = () => { S.registrarPractica(10); toast('¡Bien! Sumaste 10 minutos'); render(); };
+  montarTemas();
 };
+
+// ---------- Mis temas (repertorio que el alumno está trabajando) ----------
+const esLink = (t) => /^(https?:\/\/|www\.)\S+$/i.test(String(t).trim());
+const normalizarLink = (t) => { t = String(t || '').trim(); if (!t) return ''; return /^https?:\/\//i.test(t) ? t : `https://${t}`; };
+function fuente(link) {
+  if (!link) return { nombre: '', icono: I.nota };
+  if (/youtu\.?be/i.test(link)) return { nombre: 'YouTube', icono: I.youtube };
+  if (/spotify\.com/i.test(link)) return { nombre: 'Spotify', icono: I.spotify };
+  try { return { nombre: new URL(link).hostname.replace(/^www\./, ''), icono: I.enlace }; } catch { return { nombre: 'Link', icono: I.enlace }; }
+}
+// Busca el nombre real del tema a partir del link (YouTube y Spotify). Si no hay internet, queda el genérico.
+async function tituloDesdeLink(link) {
+  const api = /youtu\.?be/i.test(link) ? `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(link)}`
+    : /spotify\.com/i.test(link) ? `https://open.spotify.com/oembed?url=${encodeURIComponent(link)}` : '';
+  if (!api) return '';
+  try {
+    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 5000);
+    const r = await fetch(api, { signal: ctl.signal }); clearTimeout(t);
+    if (!r.ok) return '';
+    const d = await r.json();
+    return d.title ? (d.author_name && !/ - /.test(d.title) ? `${d.title} · ${d.author_name}` : d.title) : '';
+  } catch { return ''; }
+}
+
+function filaTema(t, completa) {
+  const f = fuente(t.link);
+  const listo = t.estado === 'listo';
+  return `<div class="item tema ${listo ? 'listo' : ''}">
+    <button class="icono-circ" ${t.link ? `data-abrir="${esc(t.link)}" aria-label="Abrir link"` : 'tabindex="-1"'}>${f.icono}</button>
+    <button class="txt" ${t.link ? `data-abrir="${esc(t.link)}"` : ''} style="text-align:left">
+      <div class="tit">${esc(t.titulo)}</div>
+      <div class="chico">${f.nombre ? `${esc(f.nombre)} · ` : ''}${listo ? 'Listo' : 'Trabajando'}</div>
+    </button>
+    ${completa ? `<button class="accion-tema ${listo ? 'on' : ''}" data-listo="${t.id}" aria-label="${listo ? 'Volver a trabajando' : 'Marcar como listo'}">${I.check}</button>
+      <button class="accion-tema" data-borrar="${t.id}" aria-label="Borrar">${I.basura}</button>` : ''}
+  </div>`;
+}
+
+function formTema() {
+  return `<div class="card form-tema">
+    <label class="campo"><span>Tema (nombre o link)</span><input type="text" id="tema-txt" placeholder="Ej: Fly me to the moon · Sinatra" autocomplete="off"></label>
+    <label class="campo"><span>Link de YouTube o Spotify (opcional)</span><input type="text" id="tema-link" inputmode="url" placeholder="Pegá el link acá" autocomplete="off"></label>
+    <button class="btn borde" id="tema-agregar" disabled>${I.mas.replace('<svg', '<svg stroke="currentColor"')} Agregar tema</button>
+  </div>`;
+}
+
+function bloqueTemas() {
+  const temas = S.get().temas.filter((t) => t.estado !== 'listo').slice(0, 3);
+  if (!S.get().temas.length) return `${formTema()}<p class="chico" style="margin-top:8px">Anotá las canciones que estás preparando con tu profe, con el link para escucharlas.</p>`;
+  return `${temas.length ? `<div class="lista">${temas.map((t) => filaTema(t, false)).join('')}</div>` : '<p class="chico">No tenés temas en proceso.</p>'}
+    <div class="botones"><button class="btn sec" data-ir="practicar/temas">${I.mas.replace('<svg', '<svg stroke="currentColor"')} Agregar o editar temas</button></div>`;
+}
+
+function vTemas() {
+  const temas = S.get().temas;
+  const trabajando = temas.filter((t) => t.estado !== 'listo');
+  const listos = temas.filter((t) => t.estado === 'listo');
+  return `<h1>Mis temas</h1><p class="sub" style="margin-bottom:18px">Las canciones que estás trabajando, con su link para escucharlas cuando practicás.</p>
+    ${formTema()}
+    ${trabajando.length ? `<h3>Trabajando</h3><div class="lista">${trabajando.map((t) => filaTema(t, true)).join('')}</div>` : ''}
+    ${listos.length ? `<h3>Listos</h3><div class="lista">${listos.map((t) => filaTema(t, true)).join('')}</div>` : ''}
+    ${temas.length ? `<div class="botones"><button class="btn sec" id="tema-enviar">${I.whatsapp.replace('<svg', '<svg stroke="currentColor"')} Mandarle mi lista a mi profe</button></div>` : ''}
+    ${temas.length ? '' : '<div class="vacio">Todavía no agregaste temas.</div>'}`;
+}
+
+function montarTemas() {
+  const txt = $('#tema-txt'), lnk = $('#tema-link'), btn = $('#tema-agregar');
+  if (txt) {
+    const actualizar = () => { btn.disabled = !(txt.value.trim() || lnk.value.trim()); };
+    txt.oninput = actualizar; lnk.oninput = actualizar;
+    const enviar = (e) => { if (e.key === 'Enter' && !btn.disabled) btn.click(); };
+    txt.onkeydown = enviar; lnk.onkeydown = enviar;
+    btn.onclick = async () => {
+      let titulo = txt.value.trim(), link = lnk.value.trim();
+      if (!link && esLink(titulo)) { link = titulo; titulo = ''; }
+      link = normalizarLink(link);
+      btn.disabled = true;
+      if (!titulo && link) { btn.textContent = 'Buscando el nombre…'; titulo = await tituloDesdeLink(link); }
+      if (!titulo) titulo = link ? `Tema de ${fuente(link).nombre}` : 'Tema sin nombre';
+      S.update((s) => { s.temas.unshift({ id: Date.now().toString(36), titulo, link, estado: 'trabajando', creado: S.ymd(new Date()) }); });
+      toast('Tema agregado');
+      render();
+    };
+  }
+  $$('[data-listo]').forEach((b) => b.onclick = () => {
+    S.update((s) => { const t = s.temas.find((x) => x.id === b.dataset.listo); if (t) t.estado = t.estado === 'listo' ? 'trabajando' : 'listo'; });
+    render();
+  });
+  $$('[data-borrar]').forEach((b) => b.onclick = () => {
+    if (b.dataset.confirmar !== '1') { b.dataset.confirmar = '1'; b.classList.add('confirmar'); b.setAttribute('aria-label', 'Tocá de nuevo para borrar'); toast('Tocá de nuevo para borrar'); setTimeout(() => { b.dataset.confirmar = ''; b.classList.remove('confirmar'); }, 3000); return; }
+    S.update((s) => { s.temas = s.temas.filter((x) => x.id !== b.dataset.borrar); });
+    render();
+  });
+  const env = $('#tema-enviar');
+  if (env) env.onclick = () => {
+    const s = S.get();
+    const linea = (t) => `• ${t.titulo}${t.link ? `\n  ${t.link}` : ''}`;
+    const tr = s.temas.filter((t) => t.estado !== 'listo'), li = s.temas.filter((t) => t.estado === 'listo');
+    const msg = `Hola${s.docente ? ` ${s.docente.replace(/ \(online\)/, '')}` : ''}! Soy ${s.nombre}. Estos son mis temas:\n\n${tr.length ? `Trabajando:\n${tr.map(linea).join('\n')}` : ''}${li.length ? `${tr.length ? '\n\n' : ''}Listos:\n${li.map(linea).join('\n')}` : ''}`;
+    abrir(waLink(msg));
+  };
+}
+montajes['practicar/temas'] = () => montarTemas();
 
 // ---------- Rutina guiada ----------
 function vRutina(id) {

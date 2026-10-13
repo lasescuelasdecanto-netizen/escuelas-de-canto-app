@@ -148,6 +148,17 @@ input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .calendario .d.hoy { outline: 1.5px solid var(--dorado); outline-offset: 1px; }
 .calendario .cab { font-size: 10px; text-align: center; color: var(--texto-3); }
 
+/* Mis temas */
+.tema .txt { background: none; padding: 0; min-width: 0; }
+.tema .tit { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tema.listo .tit { color: var(--texto-2); }
+.tema .icono-circ svg { stroke: var(--crema); }
+.accion-tema { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; flex: none; color: var(--texto-3); }
+.accion-tema svg { width: 20px; height: 20px; stroke: currentColor; }
+.accion-tema.on { color: var(--ok); background: rgba(95, 163, 122, .14); }
+.accion-tema.confirmar { color: var(--alerta); background: rgba(215, 119, 75, .16); }
+.form-tema .campo:last-of-type { margin-bottom: 14px; }
+
 /* Reproductor de rutina */
 .progreso { height: 4px; background: var(--card-2); border-radius: 4px; overflow: hidden; margin: 6px 0 22px; }
 .progreso i { display: block; height: 100%; background: var(--dorado); transition: width .3s; }

@@ -11,6 +11,7 @@ const DEFAULT = {
   avisos: { claseDiaAntes: true, claseHoraAntes: true, cuota: true, practica: false, practicaHora: '19:00' },
   practica: { dias: {} }, // { '2026-10-13': minutos }
   novedadesVistas: [],
+  temas: [], // [{ id, titulo, link, estado: 'trabajando' | 'listo', creado }]
 };
 
 let state = load();
