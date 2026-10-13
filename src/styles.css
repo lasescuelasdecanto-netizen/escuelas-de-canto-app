@@ -148,6 +148,11 @@ input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .calendario .d.hoy { outline: 1.5px solid var(--dorado); outline-offset: 1px; }
 .calendario .cab { font-size: 10px; text-align: center; color: var(--texto-3); }
 
+/* Avisos */
+.aviso-item { cursor: pointer; }
+.aviso-item .switch { display: inline-block; }
+input[type=time]:disabled { opacity: .4; }
+
 /* Agenda */
 .cal { padding: 14px; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }

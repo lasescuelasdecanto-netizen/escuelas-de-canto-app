@@ -56,27 +56,28 @@ export function armarRecordatorios(ahora = new Date(), actividades = []) {
     }
   });
 
-  if (s.avisos.cuota) {
+  const cuotaOn = ['cuotaApertura', 'cuotaPrevia', 'cuotaVence', 'cuotaPendiente'];
+  if (cuotaOn.some((k) => s.avisos[k])) {
     const dv = ESCUELA.pagoHasta, desde = ESCUELA.pagoDesde;
     for (let k = 0; k < 6; k++) {
       const mes = new Date(ahora.getFullYear(), ahora.getMonth() + k, 1);
       if (s.cuota.pagos.includes(ym(mes))) continue;
       const nombreMes = MESES[mes.getMonth()];
       const avisos = [
-        { d: desde, t: `Ya podés abonar la cuota de ${nombreMes}`, b: `Se paga del ${desde} al ${dv}. Tenés el alias a mano en la app.` },
-        { d: dv - 3, t: 'Se acerca el vencimiento de la cuota', b: `La cuota de ${nombreMes} vence el día ${dv}. Podés pagarla desde la app.` },
-        { d: dv, t: 'Hoy vence la cuota', b: `Hoy es el último día para abonar ${nombreMes}. Si ya pagaste, tocá "Ya pagué" en la app.` },
-        { d: dv + 5, t: '¿Ya abonaste la cuota?', b: `Todavía figura pendiente la cuota de ${nombreMes}. Si ya la pagaste, avisanos desde la app.` },
+        { k: 'cuotaApertura', d: desde, t: `Ya podés abonar la cuota de ${nombreMes}`, b: `Se paga del ${desde} al ${dv}. Tenés el alias a mano en la app.` },
+        { k: 'cuotaPrevia', d: dv - 3, t: 'Se acerca el vencimiento de la cuota', b: `La cuota de ${nombreMes} vence el día ${dv}. Podés pagarla desde la app.` },
+        { k: 'cuotaVence', d: dv, t: 'Hoy vence la cuota', b: `Hoy es el último día para abonar ${nombreMes}. Si ya pagaste, tocá "Ya pagué" en la app.` },
+        { k: 'cuotaPendiente', d: dv + 5, t: '¿Ya abonaste la cuota?', b: `Todavía figura pendiente la cuota de ${nombreMes}. Si ya la pagaste, avisanos desde la app.` },
       ];
       avisos.forEach((a, j) => {
         const at = new Date(mes.getFullYear(), mes.getMonth(), a.d, 10, 0, 0);
-        if (at > ahora) lista.push({ ...base, id: 2000 + k * 10 + j, title: a.t, body: a.b, schedule: { at, allowWhileIdle: true } });
+        if (s.avisos[a.k] && at > ahora) lista.push({ ...base, id: 2000 + k * 10 + j, title: a.t, body: a.b, schedule: { at, allowWhileIdle: true } });
       });
     }
   }
 
   // Actividades de la agenda que el alumno pidió que le recuerden: el día anterior a las 19 h
-  (actividades || []).filter((a) => (s.actividadesAvisar || []).includes(a.id)).forEach((a, i) => {
+  (s.avisos.agenda ? (actividades || []) : []).filter((a) => (s.actividadesAvisar || []).includes(a.id)).forEach((a, i) => {
     const [y, m, d] = String(a.fecha).split('-').map(Number);
     const at = new Date(y, m - 1, d - 1, 19, 0, 0);
     if (at > ahora && i < 40) lista.push({

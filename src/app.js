@@ -125,10 +125,10 @@ function renderOnboarding() {
     acciones = `<button class="btn" id="sig">Continuar</button>`;
   }
   if (onb.paso === 5) {
-    cuerpo = `<h1>Activá los avisos</h1><p class="sub">Así no se te pasa ninguna clase ni el vencimiento de la cuota. Te pedimos permiso una sola vez.</p>
-      <div class="card"><div class="fila"><div class="icono-circ">${I.campana}</div><div><b>Clases</b><p class="chico">El día anterior a las 20 h y una hora antes</p></div></div></div>
-      <div class="card"><div class="fila"><div class="icono-circ">${I.cuota}</div><div><b>Cuota</b><p class="chico">El día ${ESCUELA.pagoDesde}, 3 días antes del ${ESCUELA.pagoHasta}, el día ${ESCUELA.pagoHasta} y un recordatorio si queda pendiente</p></div></div></div>`;
-    acciones = `<button class="btn" id="activar">Activar avisos</button><button class="btn sec" id="sin">Ahora no</button>`;
+    if (!b.avisos) b.avisos = { ...S.get().avisos };
+    cuerpo = `<h1>Elegí tus avisos</h1><p class="sub">Activá solo los que te sirvan. Podés cambiarlos cuando quieras desde Escuela › Avisos.</p>
+      ${listaAvisos(b.avisos, false)}`;
+    acciones = `<button class="btn" id="activar">Guardar y activar</button><button class="btn sec" id="sin">Ahora no</button>`;
   }
 
   app.innerHTML = `<div class="onb">${ind}<div class="cuerpo">${cuerpo}</div><div class="botones">${acciones}
@@ -148,6 +148,7 @@ function renderOnboarding() {
   }
   $$('[data-doc]').forEach((el) => el.onclick = () => { b.docente = el.dataset.doc; renderOnboarding(); });
   if (onb.paso === 3) montarEditorClases(b.clases, () => renderOnboarding());
+  if (onb.paso === 5) $$('[data-av]').forEach((c) => c.onchange = () => { b.avisos[c.dataset.av] = c.checked; });
   const yapago = $('#yapago');
   if (yapago) yapago.onchange = () => { b.yaPago = yapago.checked; };
 
@@ -155,6 +156,7 @@ function renderOnboarding() {
     S.update((s) => {
       s.nombre = b.nombre.trim(); s.docente = b.docente; s.clases = b.clases;
       s.onboarded = true; s.alta = S.ym(new Date());
+      if (conAvisos && b.avisos) s.avisos = { ...s.avisos, ...b.avisos };
       if (b.yaPago && !s.cuota.pagos.includes(s.alta)) s.cuota.pagos.push(s.alta);
     });
     if (conAvisos) {
@@ -1063,7 +1065,7 @@ function vEscuela() {
     <div class="lista">
       <button class="item" data-ir="escuela/perfil"><div class="icono-circ avatar-mini">${avatar(30)}</div><div class="txt"><div class="tit">Mi perfil</div><div class="chico">${esc(s.nombre)} · ${perfilCompleto()}% completo</div></div><span class="flecha">›</span></button>
       <button class="item" data-ir="escuela/datos"><div class="icono-circ">${I.calendario}</div><div class="txt"><div class="tit">Mis horarios de clase</div><div class="chico">${s.clases.length ? s.clases.map((c) => `${S.DIAS[c.dia].slice(0, 3)} ${c.hora}`).join(' · ') : 'Sin cargar'}${s.docente ? ` · ${esc(s.docente)}` : ''}</div></div><span class="flecha">›</span></button>
-      <button class="item" data-ir="escuela/avisos"><div class="icono-circ">${I.campana}</div><div class="txt"><div class="tit">Avisos</div><div class="chico">Clases, cuota y práctica</div></div><span class="flecha">›</span></button>
+      <button class="item" data-ir="escuela/avisos"><div class="icono-circ">${I.campana}</div><div class="txt"><div class="tit">Avisos</div><div class="chico">${Object.entries(s.avisos).filter(([k, v]) => k !== 'practicaHora' && v === true).length} activos · elegí cada uno</div></div><span class="flecha">›</span></button>
     </div>
     <div class="manifiesto"><div class="linea-oro"></div><p>${esc(ESCUELA.slogan)}</p><p class="chico" style="margin-top:10px;font-style:normal">Versión ${VERSION_APP}</p></div>`;
 }
@@ -1093,18 +1095,39 @@ montajes['escuela/datos'] = () => {
   return () => { if (ruta !== 'escuela/datos') borradorDatos = null; };
 };
 
+// ---------- Lista de avisos: cada uno se activa por separado ----------
+const GRUPOS_AVISOS = () => [
+  ['Clases', [
+    ['claseDiaAntes', 'El día anterior', 'A las 20 h, con el horario y tu profe'],
+    ['claseHoraAntes', 'Una hora antes', 'Con sugerencia de calentamiento'],
+  ]],
+  ['Cuota', [
+    ['cuotaApertura', `Día ${ESCUELA.pagoDesde}: se abre el pago`, 'Ya podés abonar la cuota del mes'],
+    ['cuotaPrevia', `Día ${ESCUELA.pagoHasta - 3}: faltan 3 días`, 'Se acerca el vencimiento'],
+    ['cuotaVence', `Día ${ESCUELA.pagoHasta}: vence hoy`, 'Último día para pagar'],
+    ['cuotaPendiente', `Día ${ESCUELA.pagoHasta + 5}: si quedó pendiente`, 'Solo si no marcaste que pagaste'],
+  ]],
+  ['Agenda', [
+    ['agenda', 'Actividades', 'El día anterior a las 19 h, de las que marcaste "Avisarme"'],
+  ]],
+  ['Práctica', [
+    ['practica', 'Recordatorio diario', 'Para no cortar tu racha'],
+  ]],
+];
+function listaAvisos(a, conHora = true) {
+  return GRUPOS_AVISOS().map(([grupo, items]) => `<h3>${grupo}</h3><div class="lista">${items.map(([k, tit, sub]) => `
+    <label class="item aviso-item"><div class="txt"><div class="tit">${tit}</div><div class="chico">${sub}</div></div>
+      <span class="switch"><input type="checkbox" data-av="${k}" ${a[k] ? 'checked' : ''}><i></i></span></label>`).join('')}
+    ${grupo === 'Práctica' && conHora ? `<div class="item"><div class="txt"><div class="tit">Hora del recordatorio</div></div><input type="time" id="phora" value="${a.practicaHora}" style="width:auto;min-height:44px" ${a.practica ? '' : 'disabled'}></div>` : ''}
+  </div>`).join('');
+}
+
 function vAvisos() {
   const a = S.get().avisos;
-  const sw = (k, tit, sub) => `<div class="item"><div class="txt"><div class="tit">${tit}</div><div class="chico">${sub}</div></div>
-    <label class="switch"><input type="checkbox" data-av="${k}" ${a[k] ? 'checked' : ''}><i></i></label></div>`;
-  return `<h1>Avisos</h1><p class="sub" style="margin-bottom:18px">Elegí qué recordatorios querés recibir.</p>
-    <div class="lista">
-      ${sw('claseDiaAntes', 'Clase: el día anterior', 'A las 20 h')}
-      ${sw('claseHoraAntes', 'Clase: una hora antes', 'Con sugerencia de calentamiento')}
-      ${sw('cuota', 'Cuota', `El día ${ESCUELA.pagoDesde}, 3 días antes del ${ESCUELA.pagoHasta}, el ${ESCUELA.pagoHasta} y si queda pendiente`)}
-      ${sw('practica', 'Recordatorio de práctica', 'Todos los días')}
-    </div>
-    <label class="campo" style="margin-top:14px"><span>Hora del recordatorio de práctica</span><input type="time" id="phora" value="${a.practicaHora}"></label>
+  const activos = Object.entries(a).filter(([k, v]) => k !== 'practicaHora' && v === true).length;
+  return `<h1>Avisos</h1><p class="sub">Activá o desactivá cada recordatorio por separado.</p>
+    <p class="chico" style="margin-top:6px">${activos} aviso${activos === 1 ? '' : 's'} activo${activos === 1 ? '' : 's'}</p>
+    ${listaAvisos(a)}
     <div class="botones"><button class="btn sec" id="probar">Probar un aviso</button></div>`;
 }
 montajes['escuela/avisos'] = () => {
@@ -1112,8 +1135,10 @@ montajes['escuela/avisos'] = () => {
     if (c.checked) { await N.prepararCanal(); const p = await N.pedirPermiso(); if (p === 'denied') { toast('Activá las notificaciones en Ajustes del teléfono'); } }
     S.update((s) => { s.avisos[c.dataset.av] = c.checked; });
     await N.reprogramar();
+    toast(c.checked ? 'Aviso activado' : 'Aviso desactivado');
+    const y = window.scrollY; render(); window.scrollTo(0, y);
   });
-  $('#phora').onchange = async (e) => { S.update((s) => { s.avisos.practicaHora = e.target.value; }); await N.reprogramar(); };
+  const ph = $('#phora'); if (ph) ph.onchange = async (e) => { S.update((s) => { s.avisos.practicaHora = e.target.value; }); await N.reprogramar(); };
   $('#probar').onclick = async () => { await N.prepararCanal(); await N.pedirPermiso(); await N.probar(); };
 };
 

@@ -8,7 +8,11 @@ const DEFAULT = {
   docente: '',
   clases: [], // [{ dia: 0-6 (0=domingo), hora: 'HH:MM', modalidad: 'Individual' }]
   cuota: { diaVencimiento: 10, pagos: [] }, // pagos: ['2026-10', ...]
-  avisos: { claseDiaAntes: true, claseHoraAntes: true, cuota: true, practica: false, practicaHora: '19:00' },
+  avisos: {
+    claseDiaAntes: true, claseHoraAntes: true,
+    cuotaApertura: true, cuotaPrevia: true, cuotaVence: true, cuotaPendiente: true,
+    agenda: true, practica: false, practicaHora: '19:00',
+  },
   practica: { dias: {} }, // { '2026-10-13': minutos }
   novedadesVistas: [],
   temas: [], // [{ id, titulo, link, estado: 'trabajando' | 'listo', creado }]
@@ -28,6 +32,10 @@ function load() {
     const raw = localStorage.getItem(KEY);
     if (!raw) return structuredClone(DEFAULT);
     const data = JSON.parse(raw);
+    // Versiones anteriores tenían un solo interruptor para la cuota
+    if (data.avisos && data.avisos.cuota === false && data.avisos.cuotaApertura === undefined) {
+      Object.assign(data.avisos, { cuotaApertura: false, cuotaPrevia: false, cuotaVence: false, cuotaPendiente: false });
+    }
     return {
       ...structuredClone(DEFAULT),
       ...data,
