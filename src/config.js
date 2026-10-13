@@ -11,7 +11,7 @@ export const ESCUELA = {
   manifiesto: 'No existe la voz fea, existe la voz sin dirección.',
 
   // WhatsApp: código de país + área + número, sin espacios ni "+" (ej: 5491112345678)
-  whatsapp: '549116281958',
+  whatsapp: '5491166281958',
   email: 'info@escuelasdecanto.com',
   instagram: 'escuelasdecanto', // usuario, sin @
 
