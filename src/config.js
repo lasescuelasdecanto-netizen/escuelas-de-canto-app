@@ -15,8 +15,8 @@ export const ESCUELA = {
   email: 'info@escuelasdecanto.com',
   instagram: 'escuelasdecanto', // usuario, sin @
 
-  direccion: 'La Lucila, Vicente López',
-  mapsUrl: 'https://maps.google.com/?q=Escuelas+de+Canto+La+Lucila',
+  direccion: 'Av. Hipólito Yrigoyen 848, Vicente López',
+  mapsUrl: 'https://www.google.com/maps/search/?api=1&query=Av.+Hip%C3%B3lito+Yrigoyen+848,+Vicente+L%C3%B3pez,+Buenos+Aires',
 
   // Pago de cuota
   linkPago: '', // link de Mercado Pago (si queda vacío, se muestra solo el alias)
