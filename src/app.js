@@ -65,8 +65,10 @@ function barra(activa) {
 }
 
 function abrir(url) {
-  if (nativo) window.location.href = url;
-  else window.open(url, '_blank');
+  if (nativo) { window.location.href = url; return; }
+  const a = document.createElement('a');
+  a.href = url; a.target = '_blank'; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
 }
 
 function toast(txt) {
