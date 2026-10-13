@@ -87,7 +87,7 @@ const primerNombre = () => (S.get().nombre || '').trim().split(' ')[0];
 let onb = { paso: 0, borrador: null };
 
 function renderOnboarding() {
-  if (!onb.borrador) onb.borrador = { nombre: '', docente: '', clases: [], diaVencimiento: ESCUELA.diaVencimientoPorDefecto };
+  if (!onb.borrador) onb.borrador = { nombre: '', docente: '', clases: [] };
   const b = onb.borrador;
   const total = 5;
   const ind = onb.paso > 0 ? `<div class="pasos-ind">${Array.from({ length: total }, (_, i) => `<i class="${i < onb.paso ? 'on' : ''}"></i>`).join('')}</div>` : '';
@@ -118,8 +118,7 @@ function renderOnboarding() {
     acciones = `<button class="btn" id="sig" ${b.clases.length ? '' : 'disabled'}>Continuar</button><button class="btn sec" id="saltar">Lo cargo después</button>`;
   }
   if (onb.paso === 4) {
-    cuerpo = `<h1>Tu cuota</h1><p class="sub">¿Hasta qué día del mes tenés para pagar? Te recordamos unos días antes.</p>
-      <label class="campo"><span>Día de vencimiento</span><select id="venc">${Array.from({ length: 28 }, (_, i) => i + 1).map((d) => `<option ${d === b.diaVencimiento ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
+    cuerpo = `<h1>Tu cuota</h1><p class="sub">La cuota se paga del ${ESCUELA.pagoDesde} al ${ESCUELA.pagoHasta} de cada mes. Te avisamos cuando se abre el pago y antes de que venza.</p>
       <div class="lista"><div class="item"><div class="txt"><div class="tit">Ya pagué la de ${S.MESES[new Date().getMonth()]}</div><div class="chico">Así no te avisamos de más</div></div>
       <label class="switch"><input type="checkbox" id="yapago" ${b.yaPago ? 'checked' : ''}><i></i></label></div></div>`;
     acciones = `<button class="btn" id="sig">Continuar</button>`;
@@ -127,7 +126,7 @@ function renderOnboarding() {
   if (onb.paso === 5) {
     cuerpo = `<h1>Activá los avisos</h1><p class="sub">Así no se te pasa ninguna clase ni el vencimiento de la cuota. Te pedimos permiso una sola vez.</p>
       <div class="card"><div class="fila"><div class="icono-circ">${I.campana}</div><div><b>Clases</b><p class="chico">El día anterior a las 20 h y una hora antes</p></div></div></div>
-      <div class="card"><div class="fila"><div class="icono-circ">${I.cuota}</div><div><b>Cuota</b><p class="chico">3 días antes, el día del vencimiento y un recordatorio si queda pendiente</p></div></div></div>`;
+      <div class="card"><div class="fila"><div class="icono-circ">${I.cuota}</div><div><b>Cuota</b><p class="chico">El día ${ESCUELA.pagoDesde}, 3 días antes del ${ESCUELA.pagoHasta}, el día ${ESCUELA.pagoHasta} y un recordatorio si queda pendiente</p></div></div></div>`;
     acciones = `<button class="btn" id="activar">Activar avisos</button><button class="btn sec" id="sin">Ahora no</button>`;
   }
 
@@ -148,15 +147,13 @@ function renderOnboarding() {
   }
   $$('[data-doc]').forEach((el) => el.onclick = () => { b.docente = el.dataset.doc; renderOnboarding(); });
   if (onb.paso === 3) montarEditorClases(b.clases, () => renderOnboarding());
-  const venc = $('#venc');
-  if (venc) venc.onchange = () => { b.diaVencimiento = Number(venc.value); };
   const yapago = $('#yapago');
   if (yapago) yapago.onchange = () => { b.yaPago = yapago.checked; };
 
   const terminar = async (conAvisos) => {
     S.update((s) => {
       s.nombre = b.nombre.trim(); s.docente = b.docente; s.clases = b.clases;
-      s.cuota.diaVencimiento = b.diaVencimiento; s.onboarded = true; s.alta = S.ym(new Date());
+      s.onboarded = true; s.alta = S.ym(new Date());
       if (b.yaPago && !s.cuota.pagos.includes(s.alta)) s.cuota.pagos.push(s.alta);
     });
     if (conAvisos) {
@@ -221,7 +218,7 @@ function vInicio() {
     ? `<span class="chip ok">${I.check.replace('<svg', '<svg width="14" height="14"')} Pagada</span>`
     : cuota.dias < 0 ? `<span class="chip alerta">Vencida</span>`
     : cuota.dias <= 3 ? `<span class="chip alerta">Vence ${cuota.dias === 0 ? 'hoy' : `en ${cuota.dias} día${cuota.dias > 1 ? 's' : ''}`}</span>`
-    : `<span class="chip">Vence el ${cuota.venc.getDate()}</span>`;
+    : `<span class="chip">Del ${ESCUELA.pagoDesde} al ${ESCUELA.pagoHasta}</span>`;
 
   return `
     <div class="encabezado">${logo()}</div>
@@ -573,7 +570,7 @@ function vCuota() {
     const pago = s.cuota.pagos.includes(S.ym(d));
     meses.push(`<button class="mes ${pago ? 'pago' : ''}" data-mes="${S.ym(d)}"><b>${S.MESES[d.getMonth()].slice(0, 3)}</b>${pago ? 'Pagada' : k > 0 || S.ym(d) < (s.alta || '') ? '—' : 'Pendiente'}</button>`);
   }
-  return `<h1>Cuota</h1><p class="sub" style="margin-bottom:18px">Vence el día ${s.cuota.diaVencimiento} de cada mes.</p>
+  return `<h1>Cuota</h1><p class="sub" style="margin-bottom:18px">Se paga del ${ESCUELA.pagoDesde} al ${ESCUELA.pagoHasta} de cada mes.</p>
     <div class="card destacada">
       <div class="fila entre"><div class="etiqueta">Cuota de ${c.mesNombre}</div>${estado}</div>
       ${c.pagada ? `<p style="margin-top:12px">¡Gracias! Este mes ya está al día.</p>` : `
@@ -687,12 +684,11 @@ function vEscuela() {
 let borradorDatos = null;
 function vDatos() {
   const s = S.get();
-  if (!borradorDatos) borradorDatos = { nombre: s.nombre, docente: s.docente, clases: structuredClone(s.clases), diaVencimiento: s.cuota.diaVencimiento };
+  if (!borradorDatos) borradorDatos = { nombre: s.nombre, docente: s.docente, clases: structuredClone(s.clases) };
   const b = borradorDatos;
   return `<h1>Mis datos</h1><p class="sub" style="margin-bottom:18px">Si cambia tu horario, actualizalo acá y los avisos se reprograman solos.</p>
     <label class="campo"><span>Nombre</span><input type="text" id="nombre" value="${esc(b.nombre)}"></label>
     <label class="campo"><span>Profe</span><select id="docente"><option value="">—</option>${ESCUELA.docentes.map((d) => `<option ${d === b.docente ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
-    <label class="campo"><span>Vencimiento de la cuota (día del mes)</span><select id="venc">${Array.from({ length: 28 }, (_, i) => i + 1).map((d) => `<option ${d === b.diaVencimiento ? 'selected' : ''}>${d}</option>`).join('')}</select></label>
     <h3>Mis clases</h3>
     ${editorClases(b.clases)}
     <div class="botones"><button class="btn" id="guardar">Guardar</button></div>`;
@@ -701,10 +697,9 @@ montajes['escuela/datos'] = () => {
   const b = borradorDatos;
   $('#nombre').oninput = (e) => { b.nombre = e.target.value; };
   $('#docente').onchange = (e) => { b.docente = e.target.value; };
-  $('#venc').onchange = (e) => { b.diaVencimiento = Number(e.target.value); };
   montarEditorClases(b.clases, () => { const y = window.scrollY; render(); window.scrollTo(0, y); });
   $('#guardar').onclick = async () => {
-    S.update((s) => { s.nombre = b.nombre.trim() || s.nombre; s.docente = b.docente; s.clases = b.clases; s.cuota.diaVencimiento = b.diaVencimiento; });
+    S.update((s) => { s.nombre = b.nombre.trim() || s.nombre; s.docente = b.docente; s.clases = b.clases; });
     borradorDatos = null;
     await N.reprogramar();
     toast('Guardado');
@@ -721,7 +716,7 @@ function vAvisos() {
     <div class="lista">
       ${sw('claseDiaAntes', 'Clase: el día anterior', 'A las 20 h')}
       ${sw('claseHoraAntes', 'Clase: una hora antes', 'Con sugerencia de calentamiento')}
-      ${sw('cuota', 'Cuota', '3 días antes, el día del vencimiento y si queda pendiente')}
+      ${sw('cuota', 'Cuota', `El día ${ESCUELA.pagoDesde}, 3 días antes del ${ESCUELA.pagoHasta}, el ${ESCUELA.pagoHasta} y si queda pendiente`)}
       ${sw('practica', 'Recordatorio de práctica', 'Todos los días')}
     </div>
     <label class="campo" style="margin-top:14px"><span>Hora del recordatorio de práctica</span><input type="time" id="phora" value="${a.practicaHora}"></label>

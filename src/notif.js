@@ -2,6 +2,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { get, MESES, ym } from './store.js';
+import { ESCUELA } from './config.js';
 
 const nativo = () => Capacitor.isNativePlatform();
 const CANAL = 'recordatorios';
@@ -56,12 +57,13 @@ export function armarRecordatorios(ahora = new Date()) {
   });
 
   if (s.avisos.cuota) {
-    const dv = Math.min(s.cuota.diaVencimiento, 28);
+    const dv = ESCUELA.pagoHasta, desde = ESCUELA.pagoDesde;
     for (let k = 0; k < 6; k++) {
       const mes = new Date(ahora.getFullYear(), ahora.getMonth() + k, 1);
       if (s.cuota.pagos.includes(ym(mes))) continue;
       const nombreMes = MESES[mes.getMonth()];
       const avisos = [
+        { d: desde, t: `Ya podés abonar la cuota de ${nombreMes}`, b: `Se paga del ${desde} al ${dv}. Tenés el alias a mano en la app.` },
         { d: dv - 3, t: 'Se acerca el vencimiento de la cuota', b: `La cuota de ${nombreMes} vence el día ${dv}. Podés pagarla desde la app.` },
         { d: dv, t: 'Hoy vence la cuota', b: `Hoy es el último día para abonar ${nombreMes}. Si ya pagaste, tocá "Ya pagué" en la app.` },
         { d: dv + 5, t: '¿Ya abonaste la cuota?', b: `Todavía figura pendiente la cuota de ${nombreMes}. Si ya la pagaste, avisanos desde la app.` },

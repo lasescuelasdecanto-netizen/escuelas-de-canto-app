@@ -22,7 +22,9 @@ export const ESCUELA = {
   linkPago: '', // link de Mercado Pago (si queda vacío, se muestra solo el alias)
   aliasPago: 'escuela.de.canto.mp', // alias / CBU para transferencia
   titularPago: 'Escuelas de Canto',
-  diaVencimientoPorDefecto: 10,
+  // Período de pago de la cuota: del día 1 al día 10 de cada mes.
+  pagoDesde: 1,
+  pagoHasta: 10,
 
   docentes: [
     'Noelia', 'Eugenia', 'Agus A', 'Kiefa', 'Nury', 'Andrea',

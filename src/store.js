@@ -1,3 +1,4 @@
+import { ESCUELA } from './config.js';
 // Datos del alumno, guardados en el teléfono.
 const KEY = 'edc.alumno.v1';
 
@@ -73,7 +74,7 @@ export function proximasClases(n = 3, desde = new Date()) {
 export function estadoCuota(hoy = new Date()) {
   const mes = ym(hoy);
   const pagada = state.cuota.pagos.includes(mes);
-  const venc = new Date(hoy.getFullYear(), hoy.getMonth(), Math.min(state.cuota.diaVencimiento, 28));
+  const venc = new Date(hoy.getFullYear(), hoy.getMonth(), ESCUELA.pagoHasta);
   const dias = Math.round((venc - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) / 86400000);
   return { mes, pagada, venc, dias, mesNombre: MESES[hoy.getMonth()] };
 }
