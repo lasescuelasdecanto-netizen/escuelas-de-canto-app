@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Escuelas de Canto</string>
+    <string name="title_activity_main">Escuelas de Canto</string>
+    <string name="package_name">ar.escuelasdecanto.app</string>
+    <string name="custom_url_scheme">ar.escuelasdecanto.app</string>
+</resources>

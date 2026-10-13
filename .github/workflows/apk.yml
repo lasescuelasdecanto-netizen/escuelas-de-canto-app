@@ -1,0 +1,68 @@
+# Compila el APK de Escuelas de Canto cada vez que se sube un cambio,
+# y lo publica en "Releases" con un link de descarga fijo.
+name: Compilar APK
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'novedades.json'   # las novedades se actualizan solas, sin recompilar
+      - '**.md'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Armar la app
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Compilar APK firmado
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Preparar archivo
+        id: apk
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "tag=v${VERSION}-${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          cp android/app/build/outputs/apk/release/app-release.apk EscuelasDeCanto.apk
+
+      - name: Publicar descarga
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.apk.outputs.tag }}
+          name: Escuelas de Canto ${{ steps.apk.outputs.version }} (compilación ${{ github.run_number }})
+          body: |
+            Descarga directa para alumnos (siempre la última versión):
+            https://github.com/${{ github.repository }}/releases/latest/download/EscuelasDeCanto.apk
+          files: EscuelasDeCanto.apk
+          make_latest: true
