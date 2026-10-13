@@ -20,7 +20,7 @@ export const ESCUELA = {
 
   // Pago de cuota
   linkPago: '', // link de Mercado Pago (si queda vacío, se muestra solo el alias)
-  aliasPago: 'ESCUELAS.CANTO', // alias / CBU para transferencia
+  aliasPago: 'escuela.de.canto.mp', // alias / CBU para transferencia
   titularPago: 'Escuelas de Canto',
   diaVencimientoPorDefecto: 10,
 
