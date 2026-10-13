@@ -15,6 +15,7 @@ await build({
   format: 'iife',
   target: ['chrome90'],
   outfile: 'www/app.js',
+  loader: { '.svg': 'text' },
   define: { __VERSION__: JSON.stringify(pkg.version), __REPO__: JSON.stringify(repo) },
 });
 
@@ -23,5 +24,4 @@ copyFileSync('src/styles.css', 'www/styles.css');
 for (const w of [400, 500, 600, 700]) {
   copyFileSync(`node_modules/@fontsource/poppins/files/poppins-latin-${w}-normal.woff2`, `www/fonts/poppins-${w}.woff2`);
 }
-copyFileSync('node_modules/@fontsource/great-vibes/files/great-vibes-latin-400-normal.woff2', 'www/fonts/firma.woff2');
 console.log('www/ listo');

@@ -29,17 +29,10 @@ export const I = {
   descarga: s('<path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/>'),
 };
 
-// Micrófono condensador en línea (lockup de la marca)
-export const MIC = `<svg viewBox="0 0 64 88" fill="none" stroke="#F3EEE4" stroke-width="2.2" stroke-linecap="round">
-  <rect x="18" y="4" width="28" height="46" rx="14"/>
-  <path d="M18 18h28M18 27h28M18 36h28" stroke-width="1.4" opacity=".7"/>
-  <path d="M32 4v46" stroke-width="1.4" opacity=".7"/>
-  <path d="M10 34v4a22 22 0 0 0 44 0v-4" stroke="#BF9000"/>
-  <path d="M32 60v14"/><path d="M20 84h24"/><path d="M32 74v10"/>
-</svg>`;
+// Logo oficial del manual de marca (vectorizado). Toma el color del texto (crema).
+import LOGO_SVG from './marca/logo.svg';
+import MIC_SVG from './marca/mic.svg';
 
-export const logo = (grande = false) => `
-  <div class="logo ${grande ? 'grande' : ''}">
-    ${MIC}
-    <div><div class="wordmark">ESCUELAS<br>DE CANTO</div><div class="firma">de Fran Brunetta</div></div>
-  </div>`;
+export const MIC = MIC_SVG;
+
+export const logo = (grande = false) => `<div class="logo ${grande ? 'grande' : ''}" role="img" aria-label="Escuelas de Canto de Fran Brunetta">${LOGO_SVG}</div>`;
