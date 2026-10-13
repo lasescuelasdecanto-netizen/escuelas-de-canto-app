@@ -89,3 +89,41 @@ export const PERFIL_OPCIONES = {
   estilos: ['Pop', 'Rock', 'Jazz', 'Tango', 'Folklore', 'Musical', 'Lírico', 'Soul / R&B', 'Bossa nova', 'Latino', 'Indie', 'Gospel'],
   objetivos: ['Disfrutar cantando', 'Cantar en público', 'Grabar mis canciones', 'Audiciones y castings', 'Mejorar mi voz hablada', 'Ganar confianza', 'Profesionalizarme', 'Componer'],
 };
+
+// ============================================================
+//  Escalas con piano: cada ejercicio sube de a medio tono dentro del rango de cada voz
+//  patron: intervalos en semitonos desde la nota base · silabas: qué se canta en cada nota
+// ============================================================
+export const VOCES = [
+  { id: 'soprano', nombre: 'Soprano', detalle: 'Voz femenina aguda', desde: 60, techo: 81 },
+  { id: 'mezzo', nombre: 'Mezzosoprano', detalle: 'Voz femenina media', desde: 57, techo: 77 },
+  { id: 'contralto', nombre: 'Contralto', detalle: 'Voz femenina grave', desde: 53, techo: 74 },
+  { id: 'tenor', nombre: 'Tenor', detalle: 'Voz masculina aguda', desde: 48, techo: 69 },
+  { id: 'baritono', nombre: 'Barítono', detalle: 'Voz masculina media', desde: 45, techo: 65 },
+  { id: 'bajo', nombre: 'Bajo', detalle: 'Voz masculina grave', desde: 41, techo: 62 },
+];
+export const VOZ_DE_TESITURA = { Soprano: 'soprano', Mezzosoprano: 'mezzo', Contralto: 'contralto', Tenor: 'tenor', Barítono: 'baritono', Bajo: 'bajo' };
+
+const rep = (s, n) => Array(n).fill(s);
+export const ESCALAS = [
+  { id: 'humming', nombre: 'Humming en 5 notas', grupo: 'Calentar', bpm: 116, patron: [0, 2, 4, 5, 7, 5, 4, 2, 0], silabas: rep('mm', 9),
+    indicacion: 'Boca cerrada, dientes separados. Sentí cómo vibran los labios y la nariz. Nada de empujar.' },
+  { id: 'trino', nombre: 'Vibración de labios', grupo: 'Calentar', bpm: 126, patron: [0, 2, 4, 5, 7, 5, 4, 2, 0], silabas: rep('brr', 9),
+    indicacion: 'Labios sueltos haciendo "brrr". El aire tiene que salir parejo de principio a fin.' },
+  { id: 'ng', nombre: 'Tres notas con "ng"', grupo: 'Calentar', bpm: 108, patron: [0, 2, 4, 2, 0], silabas: rep('ng', 5),
+    indicacion: 'Como el final de "tengo": la lengua apoyada atrás y el sonido en la nariz. Muy liviano.' },
+  { id: 'mimemamomu', nombre: 'Mi-me-ma-mo-mu', grupo: 'Articulación', bpm: 120, patron: [0, 2, 4, 5, 7, 5, 4, 2, 0], silabas: ['mi', 'me', 'ma', 'mo', 'mu', 'mo', 'ma', 'me', 'mi'],
+    indicacion: 'Cambiá de vocal sin mover de más la mandíbula. Todas con el mismo color y volumen.' },
+  { id: 'vocales', nombre: 'Escala de vocales', grupo: 'Articulación', bpm: 116, patron: [0, 2, 4, 5, 7, 5, 4, 2, 0], silabas: ['a', 'e', 'i', 'o', 'u', 'o', 'i', 'e', 'a'],
+    indicacion: 'Una vocal por nota. Buscá que la "i" y la "u" suenen tan abiertas como la "a".' },
+  { id: 'arpegio', nombre: 'Arpegio con "nu"', grupo: 'Extensión', bpm: 100, patron: [0, 4, 7, 12, 7, 4, 0], silabas: rep('nu', 7),
+    indicacion: 'Ligado y liviano. La nota de arriba no tiene que sonar más fuerte que la de abajo.' },
+  { id: 'arpegio-largo', nombre: 'Arpegio extendido "ia"', grupo: 'Extensión', bpm: 108, patron: [0, 4, 7, 12, 16, 12, 7, 4, 0], silabas: ['i', 'a', 'a', 'a', 'a', 'a', 'a', 'a', 'a'],
+    indicacion: 'Arrancá con "i" y abrí a "a" sin perder el brillo. Respirá antes de cada tono.' },
+  { id: 'octava', nombre: 'Octava ligada con "u"', grupo: 'Extensión', bpm: 66, patron: [0, 12, 0], silabas: ['u', 'u', 'u'], largo: 1.6,
+    indicacion: 'Como una sirena suave: subí y bajá deslizando, sin cortes entre las notas.' },
+  { id: 'staccato', nombre: 'Staccato "ja"', grupo: 'Agilidad', bpm: 126, patron: [0, 4, 7, 4, 0], silabas: rep('ja', 5), corto: true,
+    indicacion: 'Notas cortas, como una risa. El impulso sale de la panza, no de la garganta.' },
+  { id: 'escala9', nombre: 'Escala de 9 notas', grupo: 'Agilidad', bpm: 168, patron: [0, 2, 4, 5, 7, 9, 11, 12, 14, 12, 11, 9, 7, 5, 4, 2, 0], silabas: rep('a', 17),
+    indicacion: 'Todo de un solo aire, ligado. Si te quedás sin aire, bajá la velocidad.' },
+];

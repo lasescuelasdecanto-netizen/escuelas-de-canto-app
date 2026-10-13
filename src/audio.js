@@ -11,10 +11,47 @@ export const midiAFrec = (m) => 440 * Math.pow(2, (m - 69) / 12);
 export const nombreNota = (m) => `${NOMBRES[m % 12]}${Math.floor(m / 12) - 1}`;
 export const esNegra = (m) => [1, 3, 6, 8, 10].includes(m % 12);
 
-// Tono tipo piano eléctrico suave
+// ---------- Piano de cola real (muestras Salamander Grand Piano, CC BY 3.0, Alexander Holm) ----------
+const MUESTRAS = { A1: 33, C2: 36, Ds2: 39, Fs2: 42, A2: 45, C3: 48, Ds3: 51, Fs3: 54, A3: 57, C4: 60, Ds4: 63, Fs4: 66, A4: 69, C5: 72, Ds5: 75, Fs5: 78, A5: 81, C6: 84 };
+const buffers = {}; // midi -> AudioBuffer
+let cargaPiano = null;
+export function cargarPiano() {
+  if (cargaPiano) return cargaPiano;
+  const c = audio();
+  cargaPiano = Promise.all(Object.entries(MUESTRAS).map(async ([n, m]) => {
+    try {
+      const r = await fetch(`piano/${n}.mp3`);
+      const ab = await r.arrayBuffer();
+      buffers[m] = await new Promise((ok, mal) => c.decodeAudioData(ab, ok, mal));
+    } catch {}
+  })).then(() => Object.keys(buffers).length > 0);
+  return cargaPiano;
+}
+function muestraCercana(midi) {
+  let mejor = null;
+  for (const m of Object.keys(buffers).map(Number)) if (mejor === null || Math.abs(m - midi) < Math.abs(mejor - midi)) mejor = m;
+  return mejor;
+}
+
+// Toca una nota con el piano real (o con el sonido sintetizado si las muestras todavía no cargaron)
 export function tocar(midi, dur = 0.9, cuando = 0, vol = 0.35) {
   const c = audio();
   const t = c.currentTime + cuando;
+  const base = muestraCercana(midi);
+  if (base !== null) {
+    const src = c.createBufferSource();
+    src.buffer = buffers[base];
+    src.playbackRate.value = Math.pow(2, (midi - base) / 12);
+    const g = c.createGain();
+    const largo = Math.max(0.35, dur + 0.25);
+    g.gain.setValueAtTime(Math.min(1, vol * 2.4), t);
+    g.gain.setValueAtTime(Math.min(1, vol * 2.4), t + largo - 0.25);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + largo);
+    src.connect(g).connect(c.destination);
+    src.start(t); src.stop(t + largo + 0.05);
+    return;
+  }
+  cargarPiano();
   const f = midiAFrec(midi);
   const salida = c.createGain();
   salida.gain.setValueAtTime(0.0001, t);

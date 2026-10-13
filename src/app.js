@@ -3,7 +3,7 @@ import { App as CapApp } from '@capacitor/app';
 import { ESCUELA, VERSION_APP } from './config.js';
 import * as S from './store.js';
 import { I, logo } from './iconos.js';
-import { RUTINAS, TIPS, NOVEDADES_INICIALES, ACTIVIDADES_INICIALES, PERFIL_OPCIONES } from './contenido.js';
+import { RUTINAS, TIPS, NOVEDADES_INICIALES, ACTIVIDADES_INICIALES, PERFIL_OPCIONES, ESCALAS, VOCES, VOZ_DE_TESITURA } from './contenido.js';
 import * as N from './notif.js';
 import * as A from './audio.js';
 
@@ -44,7 +44,7 @@ function render() {
   const vistas = { inicio: vInicio, practicar: vPracticar, cuota: vCuota, agenda: vAgenda, escuela: vEscuela };
   const subvistas = {
     'practicar/rutina': vRutina, 'practicar/respiracion': vRespiracion, 'practicar/teclado': vTeclado,
-    'practicar/temas': vTemas, 'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/perfil': vPerfil, 'escuela/avisos': vAvisos,
+    'practicar/temas': vTemas, 'practicar/escalas': vEscalas, 'practicar/escala': vEscala, 'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/perfil': vPerfil, 'escuela/avisos': vAvisos,
   };
   const fn = sub ? subvistas[`${base}/${sub}`] : vistas[base];
   const html = (fn || vInicio)(arg);
@@ -299,6 +299,11 @@ function vPracticar() {
       <div class="botones">${hoyMin ? `<button class="btn sec" id="sumar">${I.check} Hoy: ${hoyMin} min · sumar 10 más</button>` : `<button class="btn borde" id="sumar">Practiqué hoy (10 min)</button>`}</div>
     </div>
 
+    <button class="card destacada escalas-cta" data-ir="practicar/escalas" style="width:100%;text-align:left;margin-top:12px">
+      <div class="fila"><div class="icono-circ" style="background:rgba(243,238,228,.14)">${I.piano}</div>
+      <div style="flex:1"><b>Escalas con piano</b><p class="chico">${ESCALAS.length} ejercicios que suben de a medio tono según tu voz</p></div><span class="flecha" style="color:var(--crema)">›</span></div>
+    </button>
+
     <div class="fila entre" style="margin:26px 0 10px"><h3 style="margin:0">Mis temas</h3><button class="link" data-ir="practicar/temas">${S.get().temas.length ? 'Ver todos' : ''}</button></div>
     ${bloqueTemas()}
 
@@ -317,6 +322,130 @@ function vPracticar() {
 montajes.practicar = () => {
   $('#sumar').onclick = () => { S.registrarPractica(10); toast('¡Bien! Sumaste 10 minutos'); render(); };
   montarTemas();
+};
+
+// ---------- Escalas con piano ----------
+const vozActual = () => VOCES.find((v) => v.id === (S.get().vozEscalas || VOZ_DE_TESITURA[(S.get().perfil || {}).tesitura] || 'mezzo')) || VOCES[1];
+
+function vEscalas() {
+  const v = vozActual();
+  const grupos = [...new Set(ESCALAS.map((e) => e.grupo))];
+  return `<h1>Escalas con piano</h1><p class="sub" style="margin-bottom:16px">El piano toca el acorde, vos cantás la escala y sube medio tono cada vez, dentro del rango de tu voz.</p>
+    <label class="campo"><span>Tu voz</span><select id="esc-voz">${VOCES.map((x) => `<option value="${x.id}" ${x.id === v.id ? 'selected' : ''}>${x.nombre} · ${x.detalle}</option>`).join('')}</select></label>
+    ${grupos.map((g) => `<h3>${g}</h3><div class="lista">${ESCALAS.filter((e) => e.grupo === g).map((e) => `
+      <button class="item" data-ir="practicar/escala/${e.id}"><div class="icono-circ">${I.piano}</div>
+      <div class="txt"><div class="tit">${esc(e.nombre)}</div><div class="chico">${new Set(e.silabas).size === 1 ? `"${esc(e.silabas[0])}"` : esc(e.silabas.slice(0, 5).join('-') + (e.silabas.length > 5 ? '…' : ''))} · ${e.patron.length} notas · ${e.bpm} bpm</div></div><span class="flecha">›</span></button>`).join('')}</div>`).join('')}
+    <p class="chico" style="margin-top:18px">Si no sabés tu tipo de voz, preguntale a tu profe. Mientras tanto elegí la que te quede cómoda: si te cuesta llegar arriba, probá una más grave.</p>`;
+}
+montajes['practicar/escalas'] = () => {
+  A.cargarPiano();
+  $('#esc-voz').onchange = (e) => { S.update((s) => { s.vozEscalas = e.target.value; }); };
+};
+
+function vEscala(id) {
+  const e = ESCALAS.find((x) => x.id === id) || ESCALAS[0];
+  const v = vozActual();
+  const max = Math.max(...e.patron);
+  const inicios = []; for (let m = v.desde - 5; m + max <= v.techo; m++) if (m >= 36) inicios.push(m);
+  return `<div class="fila entre"><span class="chip oro">${esc(e.grupo)}</span><span class="chico">${esc(v.nombre)}</span></div>
+    <h1 style="margin-top:8px">${esc(e.nombre)}</h1>
+    <p class="sub">${esc(e.indicacion)}</p>
+    <div class="card escala-visor">
+      <div class="fila entre"><div><div class="etiqueta">Tono</div><div class="tono-actual" id="esc-tono">${A.nombreNota(v.desde)}</div></div>
+        <div style="text-align:right"><div class="etiqueta" id="esc-dir">Listo para empezar</div><div class="chico" id="esc-cont"></div></div></div>
+      <div class="silabas" id="esc-silabas">${e.silabas.map((s, i) => `<span data-i="${i}">${esc(s)}</span>`).join('')}</div>
+      <div class="progreso" style="margin:14px 0 0"><i id="esc-prog" style="width:0"></i></div>
+    </div>
+    <div class="controles">
+      <button class="redondo" id="esc-ant" aria-label="Tono anterior">${I.ant}</button>
+      <button class="redondo prim" id="esc-pp" aria-label="Reproducir">${I.play}</button>
+      <button class="redondo" id="esc-sig" aria-label="Tono siguiente">${I.sig}</button>
+    </div>
+    <h3>Ajustes</h3>
+    <div class="card">
+      <label class="campo"><span>Velocidad: <b id="esc-bpm-v">${e.bpm}</b> bpm</span><input type="range" id="esc-bpm" min="50" max="200" value="${e.bpm}"></label>
+      <label class="campo"><span>Empezar desde</span><select id="esc-desde">${inicios.map((m) => `<option value="${m}" ${m === v.desde ? 'selected' : ''}>${A.nombreNota(m)}</option>`).join('')}</select></label>
+      <label class="item aviso-item" style="padding:4px 0"><div class="txt"><div class="tit">Solo subir</div><div class="chico">Sin la vuelta bajando</div></div><span class="switch"><input type="checkbox" id="esc-subir"><i></i></span></label>
+    </div>
+    <p class="chico" style="margin-top:12px">Usá auriculares o el parlante a volumen medio. Si una nota te raspa o duele, pará y bajá unos tonos.</p>`;
+}
+montajes['practicar/escala'] = (id) => {
+  const e = ESCALAS.find((x) => x.id === id) || ESCALAS[0];
+  const v = vozActual();
+  const max = Math.max(...e.patron);
+  let bpm = e.bpm, desde = v.desde, soloSubir = false;
+  let tonos = [], idx = 0, corriendo = false, timers = [], inicio = 0, acumulado = 0;
+
+  const armarTonos = () => {
+    const sube = []; for (let m = desde; m + max <= v.techo; m++) sube.push(m);
+    if (!sube.length) sube.push(desde);
+    tonos = soloSubir ? sube : [...sube, ...sube.slice(0, -1).reverse()];
+    const cumbre = sube.length - 1;
+    tonos.dir = (i) => (i < cumbre ? 'Subiendo' : i === cumbre ? 'Arriba de todo' : 'Bajando');
+  };
+  const pintar = () => {
+    const raiz = tonos[idx] ?? desde;
+    $('#esc-tono').textContent = A.nombreNota(raiz);
+    $('#esc-dir').textContent = corriendo ? tonos.dir(idx) : (idx ? 'En pausa' : 'Listo para empezar');
+    $('#esc-cont').textContent = `Tono ${Math.min(idx + 1, tonos.length)} de ${tonos.length}`;
+    $('#esc-prog').style.width = `${(idx / Math.max(1, tonos.length - 1)) * 100}%`;
+    $('#esc-pp').innerHTML = corriendo ? I.pausa : I.play;
+  };
+  const marcar = (i) => $$('#esc-silabas span').forEach((s) => s.classList.toggle('on', Number(s.dataset.i) === i));
+  const limpiar = () => { timers.forEach(clearTimeout); timers = []; marcar(-1); };
+  const later = (fn, ms) => timers.push(setTimeout(fn, ms));
+
+  // Un tono: acorde de referencia (2 pulsos) + el ejercicio + 1 pulso de respiración
+  const tocarTono = () => {
+    if (!corriendo) return;
+    const raiz = tonos[idx];
+    const p = 60 / bpm;
+    pintar();
+    [raiz - 12, raiz - 8, raiz - 5].forEach((n) => A.tocar(n, p * 1.8, 0, 0.16));
+    A.tocar(raiz, p * 1.8, 0, 0.12);
+    e.patron.forEach((iv, k) => {
+      const t = (2 + k) * p;
+      const dur = e.corto ? Math.min(0.3, p * 0.5) : e.largo ? p * e.largo : p * 0.95;
+      A.tocar(raiz + iv, dur, t, 0.3);
+      if (k === 0 || e.largo) A.tocar(raiz - 12, dur, t, 0.1);
+      later(() => marcar(k), t * 1000);
+    });
+    const total = (2 + e.patron.length + 1) * p * 1000;
+    later(() => {
+      marcar(-1);
+      if (idx < tonos.length - 1) { idx++; tocarTono(); }
+      else terminar();
+    }, total);
+  };
+  const registrar = () => {
+    if (inicio) { acumulado += Date.now() - inicio; inicio = 0; }
+    if (acumulado >= 60000) { S.registrarPractica(acumulado / 60000); acumulado = 0; }
+  };
+  const terminar = () => {
+    corriendo = false; limpiar(); registrar();
+    $('#esc-dir').textContent = '¡Terminaste!';
+    $('#esc-prog').style.width = '100%';
+    $('#esc-pp').innerHTML = I.play;
+    toast('¡Muy bien! Ejercicio completo');
+    idx = 0;
+  };
+  const reproducir = async () => {
+    A.audio();
+    await A.cargarPiano();
+    corriendo = true; inicio = Date.now(); tocarTono();
+  };
+  const pausar = () => { corriendo = false; limpiar(); registrar(); pintar(); };
+
+  $('#esc-pp').onclick = () => (corriendo ? pausar() : reproducir());
+  $('#esc-sig').onclick = () => { const r = corriendo; pausar(); idx = Math.min(idx + 1, tonos.length - 1); pintar(); if (r) reproducir(); };
+  $('#esc-ant').onclick = () => { const r = corriendo; pausar(); idx = Math.max(idx - 1, 0); pintar(); if (r) reproducir(); };
+  $('#esc-bpm').oninput = (ev) => { bpm = Number(ev.target.value); $('#esc-bpm-v').textContent = bpm; };
+  $('#esc-desde').onchange = (ev) => { pausar(); desde = Number(ev.target.value); idx = 0; armarTonos(); pintar(); };
+  $('#esc-subir').onchange = (ev) => { pausar(); soloSubir = ev.target.checked; idx = Math.min(idx, 0); armarTonos(); pintar(); };
+
+  A.cargarPiano();
+  armarTonos(); pintar();
+  return () => { corriendo = false; limpiar(); registrar(); };
 };
 
 // ---------- Mis temas (repertorio que el alumno está trabajando) ----------
@@ -441,6 +570,7 @@ function vRutina(id) {
     </div>`;
 }
 montajes['practicar/rutina'] = (id) => {
+  A.cargarPiano();
   const r = RUTINAS.find((x) => x.id === id) || RUTINAS[0];
   let i = 0, resta = r.pasos[0].seg, corriendo = false, timer = null, acompTimer = null, inicioTotal = Date.now();
   const totalSeg = r.pasos.reduce((a, p) => a + p.seg, 0);
@@ -580,6 +710,7 @@ function vTeclado() {
     </div>`;
 }
 montajes['practicar/teclado'] = () => {
+  A.cargarPiano();
   const iluminar = (m, ms = 350) => {
     const t = $(`.tecla[data-m="${m}"]`); if (!t) return;
     t.classList.add('activa'); setTimeout(() => t.classList.remove('activa'), ms);
@@ -1067,7 +1198,7 @@ function vEscuela() {
       <button class="item" data-ir="escuela/datos"><div class="icono-circ">${I.calendario}</div><div class="txt"><div class="tit">Mis horarios de clase</div><div class="chico">${s.clases.length ? s.clases.map((c) => `${S.DIAS[c.dia].slice(0, 3)} ${c.hora}`).join(' · ') : 'Sin cargar'}${s.docente ? ` · ${esc(s.docente)}` : ''}</div></div><span class="flecha">›</span></button>
       <button class="item" data-ir="escuela/avisos"><div class="icono-circ">${I.campana}</div><div class="txt"><div class="tit">Avisos</div><div class="chico">${Object.entries(s.avisos).filter(([k, v]) => k !== 'practicaHora' && v === true).length} activos · elegí cada uno</div></div><span class="flecha">›</span></button>
     </div>
-    <div class="manifiesto"><div class="linea-oro"></div><p>${esc(ESCUELA.slogan)}</p><p class="chico" style="margin-top:10px;font-style:normal">Versión ${VERSION_APP}</p></div>`;
+    <div class="manifiesto"><div class="linea-oro"></div><p>${esc(ESCUELA.slogan)}</p><p class="chico" style="margin-top:10px;font-style:normal">Versión ${VERSION_APP}</p><p class="chico" style="margin-top:6px;font-style:normal;font-size:11px;opacity:.7">Sonido de piano: Salamander Grand Piano, de Alexander Holm (CC BY 3.0)</p></div>`;
 }
 
 let borradorDatos = null;

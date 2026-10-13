@@ -148,6 +148,14 @@ input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .calendario .d.hoy { outline: 1.5px solid var(--dorado); outline-offset: 1px; }
 .calendario .cab { font-size: 10px; text-align: center; color: var(--texto-3); }
 
+/* Escalas con piano */
+.escala-visor { margin-top: 16px; }
+.tono-actual { font-size: 40px; font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.silabas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
+.silabas span { min-width: 34px; text-align: center; padding: 6px 8px; border-radius: 10px; background: var(--card-2); color: var(--texto-2); font-weight: 500; transition: background .08s, color .08s, transform .08s; }
+.silabas span.on { background: var(--dorado); color: var(--carbon); transform: translateY(-2px); }
+.escalas-cta { margin-bottom: 0; }
+
 /* Avisos */
 .aviso-item { cursor: pointer; }
 .aviso-item .switch { display: inline-block; }
