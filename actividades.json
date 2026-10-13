@@ -1,0 +1,14 @@
+{
+  "actividades": [
+    {
+      "id": "concierto-final-2026",
+      "fecha": "2026-12-12",
+      "hasta": "2026-12-13",
+      "tipo": "Concierto final",
+      "titulo": "Concierto final 2026",
+      "hora": "",
+      "lugar": "",
+      "texto": "El cierre del año de la escuela. Horarios y lugar a confirmar."
+    }
+  ]
+}

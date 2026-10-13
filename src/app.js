@@ -3,7 +3,7 @@ import { App as CapApp } from '@capacitor/app';
 import { ESCUELA, VERSION_APP } from './config.js';
 import * as S from './store.js';
 import { I, logo } from './iconos.js';
-import { RUTINAS, TIPS, NOVEDADES_INICIALES } from './contenido.js';
+import { RUTINAS, TIPS, NOVEDADES_INICIALES, ACTIVIDADES_INICIALES, PERFIL_OPCIONES } from './contenido.js';
 import * as N from './notif.js';
 import * as A from './audio.js';
 
@@ -21,7 +21,7 @@ let limpiar = null;
 //  Navegación
 // ============================================================
 const TABS = [
-  ['inicio', 'Inicio'], ['practicar', 'Practicar'], ['cuota', 'Cuota'], ['novedades', 'Novedades'], ['escuela', 'Escuela'],
+  ['inicio', 'Inicio'], ['practicar', 'Practicar'], ['cuota', 'Cuota'], ['agenda', 'Agenda'], ['escuela', 'Escuela'],
 ];
 
 function ir(r, { reemplazar = false } = {}) {
@@ -41,10 +41,10 @@ function render() {
   const s = S.get();
   if (!s.onboarded) { renderOnboarding(); return; }
   const [base, sub, arg] = ruta.split('/');
-  const vistas = { inicio: vInicio, practicar: vPracticar, cuota: vCuota, novedades: vNovedades, escuela: vEscuela };
+  const vistas = { inicio: vInicio, practicar: vPracticar, cuota: vCuota, agenda: vAgenda, escuela: vEscuela };
   const subvistas = {
     'practicar/rutina': vRutina, 'practicar/respiracion': vRespiracion, 'practicar/teclado': vTeclado,
-    'practicar/temas': vTemas, 'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/avisos': vAvisos,
+    'practicar/temas': vTemas, 'practicar/metronomo': vMetronomo, 'practicar/afinador': vAfinador, 'escuela/datos': vDatos, 'escuela/perfil': vPerfil, 'escuela/avisos': vAvisos,
   };
   const fn = sub ? subvistas[`${base}/${sub}`] : vistas[base];
   const html = (fn || vInicio)(arg);
@@ -53,6 +53,7 @@ function render() {
   $$('[data-volver]').forEach((b) => b.onclick = () => volver());
   $$('[data-ir]').forEach((b) => b.onclick = () => ir(b.dataset.ir));
   $$('[data-tab]').forEach((b) => b.onclick = () => irTab(b.dataset.tab));
+  $$('[data-agenda]').forEach((b) => b.onclick = () => { agendaVista = b.dataset.agenda; irTab('agenda'); });
   $$('[data-abrir]').forEach((b) => b.onclick = (e) => { e.preventDefault(); abrir(b.dataset.abrir); });
   const montar = montajes[sub ? `${base}/${sub}` : base];
   if (montar) limpiar = montar(arg) || null;
@@ -61,7 +62,7 @@ function render() {
 function barra(activa) {
   const sinLeer = novedadesSinLeer();
   return `<div class="tabs"><nav>${TABS.map(([id, txt]) => `
-    <button data-tab="${id}" class="${activa === id ? 'on' : ''}">${I[id]}<span>${txt}</span>${id === 'novedades' && sinLeer ? '<b class="punto"></b>' : ''}</button>`).join('')}</nav></div>`;
+    <button data-tab="${id}" class="${activa === id ? 'on' : ''}">${I[id]}<span>${txt}</span>${id === 'agenda' && sinLeer ? '<b class="punto"></b>' : ''}</button>`).join('')}</nav></div>`;
 }
 
 function abrir(url) {
@@ -249,7 +250,11 @@ function vInicio() {
       <div class="icono-circ">${I.practicar}</div><div class="txt"><div class="tit">${rutinaDia.nombre}</div><div class="chico">${rutinaDia.minutos} min · ${rutinaDia.para}</div></div><span class="flecha">›</span>
     </div></button>
 
-    ${ultima ? `<h3>Última novedad</h3><button class="card nov" data-tab="novedades" style="width:100%;text-align:left">
+    ${proximaActividadHtml()}
+
+    ${perfilCompleto() < 60 ? `<button class="card completar" data-ir="escuela/perfil" style="width:100%;text-align:left;margin-top:12px"><div class="fila"><div class="icono-circ">${I.usuario}</div><div style="flex:1"><b>Completá tu perfil</b><p class="chico">Así tu profe te conoce mejor · ${perfilCompleto()}%</p></div><span class="flecha">›</span></div><div class="barra-perfil"><i style="width:${perfilCompleto()}%"></i></div></button>` : ''}
+
+    ${ultima ? `<h3>Última novedad</h3><button class="card nov" data-agenda="novedades" style="width:100%;text-align:left">
       <div class="meta"><span class="chip oro">${esc(ultima.tipo || 'Escuela')}</span><span class="chico">${fechaCorta(ultima.fecha)}</span></div>
       <h2>${esc(ultima.titulo)}</h2><p class="chico" style="margin-top:4px">${esc(recortar(ultima.texto, 110))}</p></button>` : ''}
 
@@ -749,11 +754,10 @@ const esMayor = (a, b) => { const x = a.split('.').map(Number), y = b.split('.')
 const fechaCorta = (f) => { if (!f) return ''; const [y, m, d] = f.split('-').map(Number); return `${d} de ${S.MESES[m - 1]}`; };
 const recortar = (t, n) => (t && t.length > n ? t.slice(0, n - 1) + '…' : t || '');
 
-function vNovedades() {
+function listaNovedades() {
   const { novedades: lista } = novedades();
   const vistas = S.get().novedadesVistas || [];
-  return `<h1>Novedades</h1><p class="sub" style="margin-bottom:18px">Close mics, muestras, feriados y todo lo que pasa en la escuela.</p>
-    ${lista.length ? lista.map((n) => `<div class="card nov">
+  return `${lista.length ? lista.map((n) => `<div class="card nov">
       <div class="meta"><span class="chip oro">${esc(n.tipo || 'Escuela')}</span><span class="chico">${fechaCorta(n.fecha)}</span></div>
       <h2 class="${vistas.includes(n.id) ? '' : 'nueva'}">${esc(n.titulo)}</h2>
       <p class="sub" style="white-space:pre-line">${esc(n.texto)}</p>
@@ -761,10 +765,285 @@ function vNovedades() {
       ${n.link ? `<div class="botones"><button class="btn sec peq" data-abrir="${esc(n.link)}" style="width:100%">${esc(n.boton || 'Ver más')}</button></div>` : ''}
     </div>`).join('') : '<div class="vacio">Todavía no hay novedades.</div>'}`;
 }
-montajes.novedades = () => {
-  const ids = novedades().novedades.map((n) => n.id);
-  // se marcan como leídas al salir, así el "Nuevo" se ve esta vez
-  return () => S.update((s) => { s.novedadesVistas = [...new Set([...(s.novedadesVistas || []), ...ids])]; });
+// ============================================================
+//  Agenda: calendario de actividades + novedades
+//  Las actividades se editan en actividades.json (GitHub) y llegan solas.
+// ============================================================
+let agendaVista = 'calendario';
+let agendaMes = null; // Date (día 1 del mes que se muestra)
+let agendaDia = null; // 'YYYY-MM-DD' seleccionado
+
+const AKEY = 'edc.actividades';
+function actividades() {
+  let data = null;
+  try { data = JSON.parse(localStorage.getItem(AKEY)); } catch {}
+  const lista = (data && Array.isArray(data.actividades) ? data : ACTIVIDADES_INICIALES).actividades;
+  return lista.filter((a) => a && a.fecha && a.titulo).map((a) => ({ ...a, hasta: a.hasta || a.fecha }))
+    .sort((a, b) => a.fecha.localeCompare(b.fecha));
+}
+async function actualizarActividades() {
+  if (!ESCUELA.actividadesUrl) return;
+  try {
+    const r = await fetch(`${ESCUELA.actividadesUrl}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!r.ok) return;
+    const data = await r.json();
+    if (!data || !Array.isArray(data.actividades)) return;
+    localStorage.setItem(AKEY, JSON.stringify(data));
+    N.reprogramar();
+    if (!ruta.includes('/')) render();
+  } catch {}
+}
+const enDia = (a, k) => a.fecha <= k && k <= a.hasta;
+const fechaD = (k) => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+function rangoTexto(a) {
+  const d1 = fechaD(a.fecha), d2 = fechaD(a.hasta);
+  const mes = (d) => S.MESES[d.getMonth()];
+  if (a.fecha === a.hasta) return `${S.DIAS[d1.getDay()]} ${d1.getDate()} de ${mes(d1)}`;
+  if (d1.getMonth() === d2.getMonth()) return `${d1.getDate()} y ${d2.getDate()} de ${mes(d1)}`.replace(/^(\d+) y (\d+)/, (m0, x, y) => (y - x > 1 ? `Del ${x} al ${y}` : `${x} y ${y}`));
+  return `Del ${d1.getDate()} de ${mes(d1)} al ${d2.getDate()} de ${mes(d2)}`;
+}
+function proximas(n = 50, desde = S.ymd(new Date())) {
+  return actividades().filter((a) => a.hasta >= desde).slice(0, n);
+}
+function linkGoogleCalendar(a) {
+  const f = (k) => k.replace(/-/g, '');
+  let dates;
+  if (a.hora && /^\d{1,2}:\d{2}$/.test(a.hora)) {
+    const [h, m] = a.hora.split(':').map(Number);
+    const ini = `${f(a.fecha)}T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
+    const fin = `${f(a.hasta)}T${String(Math.min(h + 2, 23)).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
+    dates = `${ini}/${fin}`;
+  } else {
+    const d = fechaD(a.hasta); d.setDate(d.getDate() + 1);
+    dates = `${f(a.fecha)}/${S.ymd(d).replace(/-/g, '')}`;
+  }
+  const q = new URLSearchParams({ action: 'TEMPLATE', text: `${a.titulo} · Escuelas de Canto`, dates, ctz: 'America/Argentina/Buenos_Aires', details: a.texto || '', location: a.lugar || ESCUELA.direccion });
+  return `https://calendar.google.com/calendar/render?${q}`;
+}
+
+function tarjetaActividad(a, compacta = false) {
+  const d = fechaD(a.fecha);
+  const avisar = (S.get().actividadesAvisar || []).includes(a.id);
+  const pasada = a.hasta < S.ymd(new Date());
+  const destacada = /concierto|final|show/i.test(a.tipo || '');
+  return `<div class="card actividad ${destacada ? 'destacada-act' : ''} ${pasada ? 'pasada' : ''}">
+    <div class="fila" style="align-items:flex-start;gap:14px">
+      <div class="fecha-bloque"><b>${d.getDate()}${a.hasta !== a.fecha ? `<small>–${fechaD(a.hasta).getDate()}</small>` : ''}</b><span>${S.MESES[d.getMonth()].slice(0, 3)}</span></div>
+      <div style="flex:1;min-width:0">
+        <span class="chip ${destacada ? 'oro' : ''}">${esc(a.tipo || 'Actividad')}</span>
+        <h2 style="margin-top:6px">${esc(a.titulo)}</h2>
+        <p class="chico">${esc(rangoTexto(a))}${a.hora ? ` · ${esc(a.hora)} h` : ''}${a.lugar ? ` · ${esc(a.lugar)}` : ''}</p>
+        ${!compacta && a.texto ? `<p class="sub" style="margin-top:8px;white-space:pre-line">${esc(a.texto)}</p>` : ''}
+      </div>
+    </div>
+    ${!compacta && !pasada ? `<div class="grilla-2" style="margin-top:14px">
+      <button class="btn peq ${avisar ? 'sec' : 'borde'}" data-avisar-act="${esc(a.id)}" style="width:100%">${avisar ? `${I.check.replace('<svg', '<svg stroke="currentColor"')} Te aviso` : `${I.campana.replace('<svg', '<svg stroke="currentColor"')} Avisarme`}</button>
+      <button class="btn peq sec" data-abrir="${esc(linkGoogleCalendar(a))}" style="width:100%">${I.calendario.replace('<svg', '<svg stroke="currentColor"')} Agendar</button>
+    </div>
+    ${a.link ? `<div class="botones" style="margin-top:10px"><button class="btn peq sec" data-abrir="${esc(a.link)}" style="width:100%">${esc(a.boton || 'Más info')}</button></div>` : ''}` : ''}
+  </div>`;
+}
+
+function proximaActividadHtml() {
+  const a = proximas(1)[0];
+  if (!a) return '';
+  return `<h3>Próxima actividad</h3><button data-agenda="calendario" style="width:100%;text-align:left;display:block">${tarjetaActividad(a, true)}</button>`;
+}
+
+function calendarioMes() {
+  const hoy = new Date();
+  if (!agendaMes) {
+    const prox = proximas(1)[0];
+    agendaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    if (prox && !proximas(50).some((a) => a.fecha.startsWith(S.ym(hoy)))) agendaMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  }
+  const y = agendaMes.getFullYear(), m = agendaMes.getMonth();
+  const primero = new Date(y, m, 1);
+  const offset = (primero.getDay() + 6) % 7;
+  const diasMes = new Date(y, m + 1, 0).getDate();
+  const acts = actividades();
+  const celdas = [];
+  for (let i = 0; i < offset; i++) celdas.push('<div></div>');
+  for (let d = 1; d <= diasMes; d++) {
+    const k = S.ymd(new Date(y, m, d));
+    const del = acts.filter((a) => enDia(a, k));
+    const fuerte = del.some((a) => /concierto|final|show/i.test(a.tipo || ''));
+    celdas.push(`<button class="dia-cal ${k === S.ymd(hoy) ? 'hoy' : ''} ${k === agendaDia ? 'sel' : ''} ${del.length ? 'con' : ''} ${fuerte ? 'fuerte' : ''}" data-dia-cal="${k}" aria-label="${d} ${S.MESES[m]}${del.length ? `, ${del.length} actividad` : ''}">${d}${del.length ? '<i></i>' : ''}</button>`);
+  }
+  return `<div class="card cal">
+    <div class="fila entre" style="margin-bottom:10px">
+      <button class="flecha-mes" data-mes="-1" aria-label="Mes anterior">${I.volver}</button>
+      <b style="text-transform:capitalize">${S.MESES[m]} ${y}</b>
+      <button class="flecha-mes" data-mes="1" aria-label="Mes siguiente" style="transform:scaleX(-1)">${I.volver}</button>
+    </div>
+    <div class="cal-grid">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map((d) => `<div class="cab">${d}</div>`).join('')}${celdas.join('')}</div>
+  </div>`;
+}
+
+function vAgenda() {
+  const sinLeer = novedadesSinLeer();
+  let cuerpo = '';
+  if (agendaVista === 'calendario') {
+    const delDia = agendaDia ? actividades().filter((a) => enDia(a, agendaDia)) : null;
+    const lista = delDia || proximas(20);
+    const titulo = agendaDia ? rangoTexto({ fecha: agendaDia, hasta: agendaDia }) : 'Próximas actividades';
+    cuerpo = `${calendarioMes()}
+      <div class="fila entre" style="margin:26px 0 10px"><h3 style="margin:0">${titulo}</h3>${agendaDia ? '<button class="link" id="ver-todas">Ver todas</button>' : ''}</div>
+      ${lista.length ? lista.map((a) => tarjetaActividad(a)).join('') : `<div class="vacio">${agendaDia ? 'No hay actividades este día.' : 'Todavía no hay actividades cargadas.'}</div>`}`;
+  } else {
+    cuerpo = listaNovedades();
+  }
+  return `<h1>Agenda</h1><p class="sub" style="margin-bottom:16px">Conciertos, open mics, close mics y todo lo que pasa en la escuela.</p>
+    <div class="segmentado" style="margin-bottom:16px">
+      <button data-vista="calendario" class="${agendaVista === 'calendario' ? 'on' : ''}">Calendario</button>
+      <button data-vista="novedades" class="${agendaVista === 'novedades' ? 'on' : ''}">Novedades${sinLeer ? ` <b class="dorado">•</b>` : ''}</button>
+    </div>
+    ${cuerpo}`;
+}
+montajes.agenda = () => {
+  $$('[data-vista]').forEach((b) => b.onclick = () => { agendaVista = b.dataset.vista; render(); });
+  $$('[data-mes]').forEach((b) => b.onclick = () => { agendaMes = new Date(agendaMes.getFullYear(), agendaMes.getMonth() + Number(b.dataset.mes), 1); agendaDia = null; render(); });
+  $$('[data-dia-cal]').forEach((b) => b.onclick = () => { agendaDia = agendaDia === b.dataset.diaCal ? null : b.dataset.diaCal; render(); });
+  const vt = $('#ver-todas'); if (vt) vt.onclick = () => { agendaDia = null; render(); };
+  $$('[data-avisar-act]').forEach((b) => b.onclick = async () => {
+    const id = b.dataset.avisarAct;
+    const on = !(S.get().actividadesAvisar || []).includes(id);
+    if (on) { await N.prepararCanal(); const p = await N.pedirPermiso(); if (p === 'denied') toast('Activá las notificaciones en Ajustes del teléfono'); }
+    S.update((s) => { const l = new Set(s.actividadesAvisar || []); on ? l.add(id) : l.delete(id); s.actividadesAvisar = [...l]; });
+    await N.reprogramar();
+    toast(on ? 'Te avisamos el día anterior' : 'Aviso quitado');
+    const y = window.scrollY; render(); window.scrollTo(0, y);
+  });
+  if (agendaVista === 'novedades') {
+    const ids = novedades().novedades.map((n) => n.id);
+    // se marcan como leídas al salir, así el "Nuevo" se ve esta vez
+    return () => S.update((s) => { s.novedadesVistas = [...new Set([...(s.novedadesVistas || []), ...ids])]; });
+  }
+};
+// ============================================================
+//  Mi perfil: datos de contacto y todo lo de sus clases de canto
+// ============================================================
+function perfilCompleto() {
+  const s = S.get(), p = s.perfil || {};
+  const campos = [s.nombre, p.celular, p.email, p.nacimiento, s.docente, s.clases.length, p.nivel, p.desde, p.tesitura, (p.estilos || []).length, (p.objetivos || []).length, p.artistas, p.experiencia, p.foto];
+  return Math.round((campos.filter(Boolean).length / campos.length) * 100);
+}
+function iniciales(n) { return (n || '?').trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase(); }
+function avatar(tam = 72) {
+  const s = S.get();
+  return s.perfil && s.perfil.foto
+    ? `<img src="${s.perfil.foto}" alt="" class="avatar" style="width:${tam}px;height:${tam}px">`
+    : `<span class="avatar ini" style="width:${tam}px;height:${tam}px;font-size:${Math.round(tam * 0.38)}px">${esc(iniciales(s.nombre))}</span>`;
+}
+function edad(nac) {
+  if (!nac) return '';
+  const [y, m, d] = nac.split('-').map(Number); const h = new Date();
+  let e = h.getFullYear() - y; if (h.getMonth() + 1 < m || (h.getMonth() + 1 === m && h.getDate() < d)) e--;
+  return e > 0 && e < 110 ? e : '';
+}
+
+let borradorPerfil = null;
+function vPerfil() {
+  const s = S.get();
+  if (!borradorPerfil) borradorPerfil = { nombre: s.nombre, ...structuredClone(s.perfil) };
+  const b = borradorPerfil;
+  const chips = (campo, opciones) => `<div class="chips">${opciones.map((o) => `<button type="button" class="chip-sel ${(b[campo] || []).includes(o) ? 'on' : ''}" data-chip="${campo}" data-valor="${esc(o)}">${esc(o)}</button>`).join('')}</div>`;
+  const opciones = (lista, valor) => `<option value="">Elegí una opción</option>${lista.map((o) => `<option ${o === valor ? 'selected' : ''}>${esc(o)}</option>`).join('')}`;
+  const pct = perfilCompleto();
+  return `<div class="perfil-cab">
+      <button class="foto-btn" id="foto-btn" aria-label="Cambiar foto">${avatar(84)}<span class="foto-edit">${I.mas}</span></button>
+      <input type="file" id="foto-input" accept="image/*" hidden>
+      <div style="min-width:0"><h1 style="margin:0">${esc(s.nombre || 'Mi perfil')}</h1><p class="chico">${s.docente ? `Alumno/a de ${esc(s.docente)}` : 'Escuelas de Canto'}</p>
+      <div class="barra-perfil" style="margin-top:8px"><i style="width:${pct}%"></i></div><p class="chico" style="margin-top:4px">Perfil ${pct}% completo</p></div>
+    </div>
+
+    <h3>Datos personales</h3>
+    <label class="campo"><span>Nombre y apellido</span><input type="text" id="p-nombre" data-campo="nombre" value="${esc(b.nombre)}" autocomplete="name"></label>
+    <label class="campo"><span>Celular</span><input type="tel" id="p-celular" data-campo="celular" value="${esc(b.celular)}" placeholder="11 2345-6789" autocomplete="tel"></label>
+    <label class="campo"><span>Mail</span><input type="email" id="p-email" data-campo="email" value="${esc(b.email)}" placeholder="tu@mail.com" autocomplete="email"></label>
+    <div class="grilla-2">
+      <label class="campo"><span>Fecha de nacimiento</span><input type="date" id="p-nacimiento" data-campo="nacimiento" value="${esc(b.nacimiento)}"></label>
+      <label class="campo"><span>Instagram (opcional)</span><input type="text" id="p-instagram" data-campo="instagram" value="${esc(b.instagram)}" placeholder="@usuario"></label>
+    </div>
+
+    <h3>Mis clases</h3>
+    <div class="lista"><button class="item" data-ir="escuela/datos"><div class="icono-circ">${I.calendario}</div><div class="txt"><div class="tit">Profe y horarios</div><div class="chico">${s.docente ? esc(s.docente) : 'Sin profe'} · ${s.clases.length ? s.clases.map((c) => `${S.DIAS[c.dia].slice(0, 3)} ${c.hora}`).join(' · ') : 'sin horarios'}</div></div><span class="flecha">›</span></button></div>
+    <div class="grilla-2" style="margin-top:14px">
+      <label class="campo"><span>¿Desde cuándo venís?</span><input type="month" id="p-desde" data-campo="desde" value="${esc(b.desde)}"></label>
+      <label class="campo"><span>Tu nivel</span><select id="p-nivel" data-campo="nivel">${opciones(PERFIL_OPCIONES.nivel, b.nivel)}</select></label>
+    </div>
+
+    <h3>Mi voz</h3>
+    <label class="campo"><span>Tipo de voz (si lo sabés)</span><select id="p-tesitura" data-campo="tesitura">${opciones(PERFIL_OPCIONES.tesitura, b.tesitura)}</select></label>
+    <div class="campo"><span>Estilos que te gusta cantar</span>${chips('estilos', PERFIL_OPCIONES.estilos)}</div>
+    <label class="campo"><span>Artistas que te inspiran</span><input type="text" id="p-artistas" data-campo="artistas" value="${esc(b.artistas)}" placeholder="Ej: Adele, Sinatra, Mercedes Sosa"></label>
+
+    <h3>Mi recorrido</h3>
+    <label class="campo"><span>Experiencia cantando</span><textarea id="p-experiencia" data-campo="experiencia" rows="3" placeholder="Coros, bandas, otras clases, si cantaste en público…">${esc(b.experiencia)}</textarea></label>
+    <label class="campo"><span>¿Tocás algún instrumento?</span><input type="text" id="p-instrumento" data-campo="instrumento" value="${esc(b.instrumento)}" placeholder="Ej: guitarra, piano, ninguno"></label>
+    <div class="campo"><span>¿Qué querés lograr?</span>${chips('objetivos', PERFIL_OPCIONES.objetivos)}</div>
+    <label class="campo"><span>Algo que tu profe deba saber</span><textarea id="p-notas" data-campo="notas" rows="3" placeholder="Lo que quieras contarnos para que tus clases sean a tu medida">${esc(b.notas)}</textarea></label>
+
+    <div class="botones">
+      <button class="btn" id="p-guardar">Guardar perfil</button>
+      <button class="btn sec" id="p-enviar">${I.whatsapp.replace('<svg', '<svg stroke="currentColor"')} Mandar mi ficha a la escuela</button>
+    </div>
+    <p class="chico" style="text-align:center;margin-top:10px">Tus datos quedan guardados en tu celular. La escuela los recibe solo si mandás tu ficha.</p>`;
+}
+function fichaTexto() {
+  const s = S.get(), p = s.perfil;
+  const l = (k, v) => (v && (!Array.isArray(v) || v.length) ? `*${k}:* ${Array.isArray(v) ? v.join(', ') : v}` : '');
+  const desde = p.desde ? (() => { const [y, m] = p.desde.split('-').map(Number); return `${S.MESES[m - 1]} ${y}`; })() : '';
+  return ['🎤 *Ficha de alumno · Escuelas de Canto*', '',
+    l('Nombre', s.nombre), l('Celular', p.celular), l('Mail', p.email),
+    l('Edad', edad(p.nacimiento) ? `${edad(p.nacimiento)} años` : ''), l('Instagram', p.instagram), '',
+    l('Profe', s.docente), l('Clases', s.clases.map((c) => `${S.DIAS[c.dia]} ${c.hora} (${c.modalidad})`).join(', ')),
+    l('En la escuela desde', desde), l('Nivel', p.nivel), '',
+    l('Tipo de voz', p.tesitura), l('Estilos', p.estilos), l('Artistas', p.artistas),
+    l('Experiencia', p.experiencia), l('Instrumento', p.instrumento), l('Objetivos', p.objetivos), l('Para el profe', p.notas),
+  ].filter((x, i, a) => x !== '' || (a[i - 1] !== '' && i > 0)).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+function guardarPerfil() {
+  const b = borradorPerfil;
+  S.update((s) => {
+    s.nombre = (b.nombre || '').trim() || s.nombre;
+    const { nombre, ...resto } = b;
+    s.perfil = { ...s.perfil, ...resto };
+  });
+}
+function reducirFoto(file) {
+  return new Promise((ok, mal) => {
+    const lector = new FileReader();
+    lector.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        const T = 320, c = document.createElement('canvas'); c.width = T; c.height = T;
+        const lado = Math.min(img.width, img.height);
+        c.getContext('2d').drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2, lado, lado, 0, 0, T, T);
+        ok(c.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = mal; img.src = lector.result;
+    };
+    lector.onerror = mal; lector.readAsDataURL(file);
+  });
+}
+montajes['escuela/perfil'] = () => {
+  const b = borradorPerfil;
+  $$('[data-campo]').forEach((el) => { el.oninput = el.onchange = () => { b[el.dataset.campo] = el.value; }; });
+  $$('[data-chip]').forEach((el) => el.onclick = () => {
+    const c = el.dataset.chip, v = el.dataset.valor;
+    const set = new Set(b[c] || []); set.has(v) ? set.delete(v) : set.add(v); b[c] = [...set];
+    el.classList.toggle('on', set.has(v));
+  });
+  $('#foto-btn').onclick = () => $('#foto-input').click();
+  $('#foto-input').onchange = async (e) => {
+    const f = e.target.files && e.target.files[0]; if (!f) return;
+    try { b.foto = await reducirFoto(f); guardarPerfil(); const y = window.scrollY; render(); window.scrollTo(0, y); toast('Foto actualizada'); }
+    catch { toast('No se pudo cargar la foto'); }
+  };
+  $('#p-guardar').onclick = () => { guardarPerfil(); borradorPerfil = null; toast('Perfil guardado'); volver(); };
+  $('#p-enviar').onclick = () => { guardarPerfil(); abrir(waLink(fichaTexto())); };
+  return () => { if (ruta !== 'escuela/perfil' && !ruta.startsWith('escuela/datos')) borradorPerfil = null; };
 };
 
 // ============================================================
@@ -782,7 +1061,8 @@ function vEscuela() {
     </div>
     <h3>Mi cuenta</h3>
     <div class="lista">
-      <button class="item" data-ir="escuela/datos"><div class="icono-circ">${I.usuario}</div><div class="txt"><div class="tit">Mis datos y horarios</div><div class="chico">${esc(s.nombre)}${s.docente ? ` · ${esc(s.docente)}` : ''}</div></div><span class="flecha">›</span></button>
+      <button class="item" data-ir="escuela/perfil"><div class="icono-circ avatar-mini">${avatar(30)}</div><div class="txt"><div class="tit">Mi perfil</div><div class="chico">${esc(s.nombre)} · ${perfilCompleto()}% completo</div></div><span class="flecha">›</span></button>
+      <button class="item" data-ir="escuela/datos"><div class="icono-circ">${I.calendario}</div><div class="txt"><div class="tit">Mis horarios de clase</div><div class="chico">${s.clases.length ? s.clases.map((c) => `${S.DIAS[c.dia].slice(0, 3)} ${c.hora}`).join(' · ') : 'Sin cargar'}${s.docente ? ` · ${esc(s.docente)}` : ''}</div></div><span class="flecha">›</span></button>
       <button class="item" data-ir="escuela/avisos"><div class="icono-circ">${I.campana}</div><div class="txt"><div class="tit">Avisos</div><div class="chico">Clases, cuota y práctica</div></div><span class="flecha">›</span></button>
     </div>
     <div class="manifiesto"><div class="linea-oro"></div><p>${esc(ESCUELA.slogan)}</p><p class="chico" style="margin-top:10px;font-style:normal">Versión ${VERSION_APP}</p></div>`;
@@ -793,8 +1073,7 @@ function vDatos() {
   const s = S.get();
   if (!borradorDatos) borradorDatos = { nombre: s.nombre, docente: s.docente, clases: structuredClone(s.clases) };
   const b = borradorDatos;
-  return `<h1>Mis datos</h1><p class="sub" style="margin-bottom:18px">Si cambia tu horario, actualizalo acá y los avisos se reprograman solos.</p>
-    <label class="campo"><span>Nombre</span><input type="text" id="nombre" value="${esc(b.nombre)}"></label>
+  return `<h1>Mis horarios</h1><p class="sub" style="margin-bottom:18px">Si cambia tu horario, actualizalo acá y los avisos se reprograman solos.</p>
     <label class="campo"><span>Profe</span><select id="docente"><option value="">—</option>${ESCUELA.docentes.map((d) => `<option ${d === b.docente ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></label>
     <h3>Mis clases</h3>
     ${editorClases(b.clases)}
@@ -802,11 +1081,10 @@ function vDatos() {
 }
 montajes['escuela/datos'] = () => {
   const b = borradorDatos;
-  $('#nombre').oninput = (e) => { b.nombre = e.target.value; };
   $('#docente').onchange = (e) => { b.docente = e.target.value; };
   montarEditorClases(b.clases, () => { const y = window.scrollY; render(); window.scrollTo(0, y); });
   $('#guardar').onclick = async () => {
-    S.update((s) => { s.nombre = b.nombre.trim() || s.nombre; s.docente = b.docente; s.clases = b.clases; });
+    S.update((s) => { s.docente = b.docente; s.clases = b.clases; });
     borradorDatos = null;
     await N.reprogramar();
     toast('Guardado');
@@ -843,13 +1121,15 @@ montajes['escuela/avisos'] = () => {
 //  Arranque
 // ============================================================
 async function iniciar() {
+  N.usarActividades(() => actividades());
   render();
   if (nativo) {
     CapApp.addListener('backButton', () => { if (!volver()) CapApp.minimizeApp(); });
-    CapApp.addListener('resume', () => { actualizarNovedades(); N.reprogramar(); if (!ruta.includes('/')) render(); });
+    CapApp.addListener('resume', () => { actualizarNovedades(); actualizarActividades(); N.reprogramar(); if (!ruta.includes('/')) render(); });
     await N.prepararCanal();
     if (S.get().onboarded) N.reprogramar();
   }
   actualizarNovedades();
+  actualizarActividades();
 }
 iniciar();

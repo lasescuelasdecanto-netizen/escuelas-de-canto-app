@@ -33,6 +33,7 @@ export const ESCUELA = {
 
   // Novedades y aviso de versión nueva: se leen de este archivo online.
   // Se completan solos cuando GitHub compila la app (ver README).
+  actividadesUrl: __REPO__ ? `https://raw.githubusercontent.com/${__REPO__}/main/actividades.json` : '',
   novedadesUrl: __REPO__ ? `https://raw.githubusercontent.com/${__REPO__}/main/novedades.json` : '',
   // Link fijo para descargar siempre la última versión del APK.
   descargaUrl: __REPO__ ? `https://github.com/${__REPO__}/releases/latest/download/EscuelasDeCanto.apk` : '',

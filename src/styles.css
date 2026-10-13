@@ -27,7 +27,7 @@
 html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--crema); }
 body { font-family: 'Poppins', system-ui, sans-serif; font-size: 15px; line-height: 1.5; overscroll-behavior: none; -webkit-font-smoothing: antialiased; }
 button, input, select { font: inherit; color: inherit; }
-button { cursor: pointer; border: 0; background: none; }
+button { cursor: pointer; border: 0; background: none; padding: 0; }
 a { color: inherit; }
 
 #app { min-height: 100%; display: flex; flex-direction: column; }
@@ -147,6 +147,50 @@ input[type=time]::-webkit-calendar-picker-indicator { filter: invert(.9); }
 .calendario .d.si { background: var(--noche); color: var(--crema); }
 .calendario .d.hoy { outline: 1.5px solid var(--dorado); outline-offset: 1px; }
 .calendario .cab { font-size: 10px; text-align: center; color: var(--texto-3); }
+
+/* Agenda */
+.cal { padding: 14px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal-grid .cab { font-size: 11px; text-align: center; color: var(--texto-3); padding-bottom: 4px; }
+.dia-cal { position: relative; aspect-ratio: 1; border-radius: 10px; font-size: 14px; font-variant-numeric: tabular-nums; color: var(--texto-2); display: grid; place-items: center; }
+.dia-cal.con { color: var(--crema); background: rgba(11, 83, 148, .45); font-weight: 600; }
+.dia-cal.fuerte { background: var(--dorado-suave); color: var(--dorado); }
+.dia-cal i { position: absolute; bottom: 5px; width: 5px; height: 5px; border-radius: 50%; background: var(--crema); }
+.dia-cal.fuerte i { background: var(--dorado); }
+.dia-cal.hoy { outline: 1.5px solid var(--texto-3); outline-offset: -1.5px; }
+.dia-cal.sel { outline: 2px solid var(--dorado); outline-offset: -2px; }
+.flecha-mes { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; background: var(--card-2); }
+.flecha-mes svg { width: 20px; height: 20px; stroke: var(--crema); }
+.actividad + .actividad { margin-top: 12px; }
+.actividad.pasada { opacity: .55; }
+.actividad.destacada-act { border-color: rgba(191, 144, 0, .45); }
+.fecha-bloque { width: 58px; flex: none; text-align: center; background: var(--card-2); border-radius: 14px; padding: 8px 4px; }
+.fecha-bloque b { display: block; font-size: 24px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.fecha-bloque b small { font-size: 14px; color: var(--texto-2); }
+.fecha-bloque span { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--texto-2); }
+.destacada-act .fecha-bloque { background: var(--dorado-suave); }
+.destacada-act .fecha-bloque b { color: var(--dorado); }
+
+/* Perfil */
+.perfil-cab { display: flex; gap: 16px; align-items: center; margin-bottom: 8px; }
+.foto-btn { position: relative; flex: none; border-radius: 50%; }
+.avatar { border-radius: 50%; object-fit: cover; display: block; }
+.avatar.ini { display: grid; place-items: center; background: var(--noche); color: var(--crema); font-weight: 600; }
+.avatar-mini { background: none; padding: 0; overflow: hidden; border-radius: 50%; }
+.foto-edit { position: absolute; right: -2px; bottom: -2px; width: 28px; height: 28px; border-radius: 50%; background: var(--dorado); display: grid; place-items: center; border: 2px solid var(--fondo); }
+.foto-edit svg { width: 16px; height: 16px; stroke: var(--carbon); stroke-width: 2.4; }
+.barra-perfil { height: 6px; border-radius: 6px; background: var(--card-2); overflow: hidden; margin-top: 10px; }
+.barra-perfil i { display: block; height: 100%; background: var(--dorado); border-radius: 6px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip-sel { padding: 9px 14px; border-radius: 99px; border: 1px solid var(--linea); background: var(--card); font-size: 14px; color: var(--texto-2); }
+.chip-sel.on { border-color: var(--dorado); color: var(--dorado); background: var(--dorado-suave); }
+div.campo { display: block; margin-bottom: 14px; }
+div.campo > span { display: block; font-size: 13px; color: var(--texto-2); margin-bottom: 8px; }
+textarea { width: 100%; background: var(--card); border: 1px solid var(--linea); border-radius: 14px; padding: 12px 14px; font: inherit; font-size: 16px; color: inherit; outline: none; resize: vertical; }
+textarea:focus { border-color: var(--dorado); }
+input[type=tel], input[type=email], input[type=date], input[type=month] { width: 100%; min-height: 52px; background: var(--card); border: 1px solid var(--linea); border-radius: 14px; padding: 12px 14px; font-size: 16px; outline: none; appearance: none; color: inherit; }
+input[type=date]::-webkit-calendar-picker-indicator, input[type=month]::-webkit-calendar-picker-indicator { filter: invert(.9); }
+.completar .barra-perfil { margin-top: 12px; }
 
 /* Mis temas */
 .tema .txt { background: none; padding: 0; min-width: 0; }

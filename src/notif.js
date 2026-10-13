@@ -28,7 +28,7 @@ export async function prepararCanal() {
 
 function pad(n) { return String(n).padStart(2, '0'); }
 
-export function armarRecordatorios(ahora = new Date()) {
+export function armarRecordatorios(ahora = new Date(), actividades = []) {
   const s = get();
   const lista = [];
   const base = { channelId: CANAL, smallIcon: 'ic_stat_edc', iconColor: '#BF9000' };
@@ -75,6 +75,18 @@ export function armarRecordatorios(ahora = new Date()) {
     }
   }
 
+  // Actividades de la agenda que el alumno pidió que le recuerden: el día anterior a las 19 h
+  (actividades || []).filter((a) => (s.actividadesAvisar || []).includes(a.id)).forEach((a, i) => {
+    const [y, m, d] = String(a.fecha).split('-').map(Number);
+    const at = new Date(y, m - 1, d - 1, 19, 0, 0);
+    if (at > ahora && i < 40) lista.push({
+      ...base, id: 4000 + i,
+      title: `Mañana: ${a.titulo}`,
+      body: [a.hora ? `${a.hora} h` : '', a.lugar].filter(Boolean).join(' · ') || 'Te esperamos. Mirá los detalles en la agenda de la app.',
+      schedule: { at, allowWhileIdle: true },
+    });
+  });
+
   if (s.avisos.practica) {
     const [h, m] = (s.avisos.practicaHora || '19:00').split(':').map(Number);
     lista.push({
@@ -87,6 +99,9 @@ export function armarRecordatorios(ahora = new Date()) {
   return lista;
 }
 
+let fuenteActividades = () => [];
+export function usarActividades(fn) { fuenteActividades = fn; }
+
 export async function reprogramar() {
   if (!nativo()) return;
   try {
@@ -94,7 +109,7 @@ export async function reprogramar() {
     if (pend.notifications.length) {
       await LocalNotifications.cancel({ notifications: pend.notifications.map((n) => ({ id: n.id })) });
     }
-    const lista = armarRecordatorios();
+    const lista = armarRecordatorios(new Date(), fuenteActividades());
     if (lista.length) await LocalNotifications.schedule({ notifications: lista });
   } catch (e) {
     console.warn('No se pudieron programar los recordatorios', e);

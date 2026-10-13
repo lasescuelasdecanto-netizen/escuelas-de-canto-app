@@ -12,6 +12,12 @@ const DEFAULT = {
   practica: { dias: {} }, // { '2026-10-13': minutos }
   novedadesVistas: [],
   temas: [], // [{ id, titulo, link, estado: 'trabajando' | 'listo', creado }]
+  actividadesAvisar: [], // ids de actividades de la agenda con recordatorio
+  perfil: {
+    foto: '', celular: '', email: '', nacimiento: '', instagram: '',
+    nivel: '', desde: '', tesitura: '', estilos: [], objetivos: [],
+    artistas: '', experiencia: '', instrumento: '', notas: '',
+  },
 };
 
 let state = load();
@@ -28,6 +34,7 @@ function load() {
       cuota: { ...DEFAULT.cuota, ...(data.cuota || {}) },
       avisos: { ...DEFAULT.avisos, ...(data.avisos || {}) },
       practica: { ...DEFAULT.practica, ...(data.practica || {}) },
+      perfil: { ...DEFAULT.perfil, ...(data.perfil || {}) },
     };
   } catch {
     return structuredClone(DEFAULT);

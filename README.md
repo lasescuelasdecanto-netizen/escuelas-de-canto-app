@@ -35,6 +35,29 @@ Archivo `novedades.json`. Les aparece a todos los alumnos la próxima vez que ab
 - `link`, `boton` e `imagen` (link a una foto) son opcionales.
 - Separá cada bloque con una coma.
 
+### Agenda (conciertos, open mics, close mics, muestras)
+Archivo `actividades.json`. Igual que las novedades: les aparece a todos sin reinstalar. Cada actividad:
+
+```json
+{
+  "id": "close-mic-noviembre",
+  "fecha": "2026-11-21",
+  "hasta": "2026-11-21",
+  "tipo": "Close mic",
+  "titulo": "Close mic de noviembre",
+  "hora": "21:00",
+  "lugar": "Av. Hipólito Yrigoyen 848",
+  "texto": "Cupos limitados, anotate con tu profe.",
+  "link": "https://wa.me/5491166281958",
+  "boton": "Quiero participar"
+}
+```
+
+- `hasta` solo hace falta si dura más de un día (por ejemplo el concierto final del 12 al 13).
+- `hora`, `lugar`, `texto`, `link` y `boton` son opcionales. Si `hora` va vacía, el evento se agenda como "todo el día".
+- Si el `tipo` dice Concierto, Final o Show, la actividad se destaca en dorado.
+- Los alumnos pueden tocar "Avisarme" y les llega un recordatorio el día anterior a las 19 h.
+
 ### Datos de la escuela
 Archivo `src/config.js`: WhatsApp, mail, Instagram, dirección, alias o link de Mercado Pago, día de vencimiento por defecto y lista de profes. Al guardar, GitHub genera un APK nuevo.
 

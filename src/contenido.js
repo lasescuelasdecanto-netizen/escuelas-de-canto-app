@@ -75,3 +75,17 @@ export const NOVEDADES_INICIALES = {
     { id: 'bienvenida', fecha: '2026-10-13', tipo: 'Escuela', titulo: '¡Bienvenidos a la app!', texto: 'Desde acá vas a tener tus recordatorios de clase y cuota, ejercicios para practicar en casa y todas las novedades de la escuela.' },
   ],
 };
+
+// Copia de la agenda que viene dentro de la app (se actualiza sola desde actividades.json).
+export const ACTIVIDADES_INICIALES = {
+  actividades: [
+    { id: 'concierto-final-2026', fecha: '2026-12-12', hasta: '2026-12-13', tipo: 'Concierto final', titulo: 'Concierto final 2026', hora: '', lugar: '', texto: 'El cierre del año de la escuela. Horarios y lugar a confirmar.' },
+  ],
+};
+
+export const PERFIL_OPCIONES = {
+  nivel: ['Empezando', 'Principiante', 'Intermedio', 'Avanzado'],
+  tesitura: ['No sé', 'Soprano', 'Mezzosoprano', 'Contralto', 'Tenor', 'Barítono', 'Bajo'],
+  estilos: ['Pop', 'Rock', 'Jazz', 'Tango', 'Folklore', 'Musical', 'Lírico', 'Soul / R&B', 'Bossa nova', 'Latino', 'Indie', 'Gospel'],
+  objetivos: ['Disfrutar cantando', 'Cantar en público', 'Grabar mis canciones', 'Audiciones y castings', 'Mejorar mi voz hablada', 'Ganar confianza', 'Profesionalizarme', 'Componer'],
+};
