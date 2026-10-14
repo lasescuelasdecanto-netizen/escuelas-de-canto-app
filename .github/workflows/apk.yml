@@ -44,6 +44,18 @@ jobs:
           npm run build
           npx cap sync android
 
+      - name: Publicar la versión web (iPhone)
+        run: |
+          cd www
+          touch .nojekyll
+          git init -q -b gh-pages
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Versión web ${{ github.sha }}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" gh-pages
+          rm -rf .git .nojekyll
+
       - name: Compilar APK firmado
         working-directory: android
         run: |

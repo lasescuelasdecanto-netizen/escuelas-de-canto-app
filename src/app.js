@@ -6,8 +6,11 @@ import { I, logo } from './iconos.js';
 import { RUTINAS, TIPS, NOVEDADES_INICIALES, ACTIVIDADES_INICIALES, PERFIL_OPCIONES, ESCALAS, VOCES, VOZ_DE_TESITURA } from './contenido.js';
 import * as N from './notif.js';
 import * as A from './audio.js';
+import { icsMisAvisos, icsActividad, abrirIcs } from './ics.js';
 
 const nativo = Capacitor.isNativePlatform();
+const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const instalada = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
 const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -126,9 +129,9 @@ function renderOnboarding() {
   }
   if (onb.paso === 5) {
     if (!b.avisos) b.avisos = { ...S.get().avisos };
-    cuerpo = `<h1>Elegí tus avisos</h1><p class="sub">Activá solo los que te sirvan. Podés cambiarlos cuando quieras desde Escuela › Avisos.</p>
+    cuerpo = `<h1>Elegí tus avisos</h1><p class="sub">${nativo ? 'Activá solo los que te sirvan. Podés cambiarlos cuando quieras desde Escuela › Avisos.' : 'Elegí cuáles querés. Los vamos a agregar al calendario de tu teléfono, que es el que te avisa.'}</p>
       ${listaAvisos(b.avisos, false)}`;
-    acciones = `<button class="btn" id="activar">Guardar y activar</button><button class="btn sec" id="sin">Ahora no</button>`;
+    acciones = `<button class="btn" id="activar">${nativo ? 'Guardar y activar' : 'Guardar y agregar a mi calendario'}</button><button class="btn sec" id="sin">Ahora no</button>`;
   }
 
   app.innerHTML = `<div class="onb">${ind}<div class="cuerpo">${cuerpo}</div><div class="botones">${acciones}
@@ -167,6 +170,7 @@ function renderOnboarding() {
     await N.reprogramar();
     onb = { paso: 0, borrador: null };
     irTab('inicio');
+    if (conAvisos && !nativo) abrirIcs(icsMisAvisos());
   };
   const act = $('#activar'); if (act) act.onclick = () => terminar(true);
   const sin = $('#sin'); if (sin) sin.onclick = () => terminar(false);
@@ -226,6 +230,8 @@ function vInicio() {
   return `
     <div class="encabezado">${logo()}</div>
     ${avisoActualizacion()}
+    ${!nativo && esIOS && !instalada ? `<div class="aviso-update"><div class="icono-circ" style="background:none">${I.descarga.replace('<svg', '<svg style="stroke:var(--dorado)"')}</div>
+      <div style="flex:1"><b>Instalala en tu iPhone</b><p class="chico">Tocá <b>Compartir</b> (el cuadrado con la flecha) y después <b>"Agregar a inicio"</b>.</p></div></div>` : ''}
     <div class="saludo"><h1>${saludo}${primerNombre() ? `, <span>${esc(primerNombre())}</span>` : ''}</h1><p class="sub">${esc(tip)}</p></div>
 
     <div class="card destacada">
@@ -878,7 +884,7 @@ async function actualizarNovedades() {
 }
 function avisoActualizacion() {
   const v = novedades().versionApp;
-  if (!v || !ESCUELA.descargaUrl || !esMayor(v, VERSION_APP)) return '';
+  if (!nativo || !v || !ESCUELA.descargaUrl || !esMayor(v, VERSION_APP)) return '';
   return `<div class="aviso-update"><div class="icono-circ" style="background:none">${I.descarga.replace('<svg', '<svg style="stroke:var(--dorado)"')}</div>
     <div style="flex:1"><b>Hay una versión nueva</b><p class="chico">Descargala e instalala encima de esta. No perdés tus datos.</p></div>
     <button class="btn peq borde" data-abrir="${esc(ESCUELA.descargaUrl)}">Bajar</button></div>`;
@@ -971,7 +977,7 @@ function tarjetaActividad(a, compacta = false) {
     </div>
     ${!compacta && !pasada ? `<div class="grilla-2" style="margin-top:14px">
       <button class="btn peq ${avisar ? 'sec' : 'borde'}" data-avisar-act="${esc(a.id)}" style="width:100%">${avisar ? `${I.check.replace('<svg', '<svg stroke="currentColor"')} Te aviso` : `${I.campana.replace('<svg', '<svg stroke="currentColor"')} Avisarme`}</button>
-      <button class="btn peq sec" data-abrir="${esc(linkGoogleCalendar(a))}" style="width:100%">${I.calendario.replace('<svg', '<svg stroke="currentColor"')} Agendar</button>
+      <button class="btn peq sec" ${esIOS ? `data-ics-act="${esc(a.id)}"` : `data-abrir="${esc(linkGoogleCalendar(a))}"`} style="width:100%">${I.calendario.replace('<svg', '<svg stroke="currentColor"')} Agendar</button>
     </div>
     ${a.link ? `<div class="botones" style="margin-top:10px"><button class="btn peq sec" data-abrir="${esc(a.link)}" style="width:100%">${esc(a.boton || 'Más info')}</button></div>` : ''}` : ''}
   </div>`;
@@ -1038,9 +1044,11 @@ montajes.agenda = () => {
   $$('[data-mes]').forEach((b) => b.onclick = () => { agendaMes = new Date(agendaMes.getFullYear(), agendaMes.getMonth() + Number(b.dataset.mes), 1); agendaDia = null; render(); });
   $$('[data-dia-cal]').forEach((b) => b.onclick = () => { agendaDia = agendaDia === b.dataset.diaCal ? null : b.dataset.diaCal; render(); });
   const vt = $('#ver-todas'); if (vt) vt.onclick = () => { agendaDia = null; render(); };
+  $$('[data-ics-act]').forEach((b) => b.onclick = () => { const a = actividades().find((x) => x.id === b.dataset.icsAct); if (a) abrirIcs(icsActividad(a), `${a.id}.ics`); });
   $$('[data-avisar-act]').forEach((b) => b.onclick = async () => {
     const id = b.dataset.avisarAct;
     const on = !(S.get().actividadesAvisar || []).includes(id);
+    if (on && !nativo) { const a = actividades().find((x) => x.id === id); if (a) abrirIcs(icsActividad(a), `${a.id}.ics`); return; }
     if (on) { await N.prepararCanal(); const p = await N.pedirPermiso(); if (p === 'denied') toast('Activá las notificaciones en Ajustes del teléfono'); }
     S.update((s) => { const l = new Set(s.actividadesAvisar || []); on ? l.add(id) : l.delete(id); s.actividadesAvisar = [...l]; });
     await N.reprogramar();
@@ -1229,18 +1237,18 @@ montajes['escuela/datos'] = () => {
 // ---------- Lista de avisos: cada uno se activa por separado ----------
 const GRUPOS_AVISOS = () => [
   ['Clases', [
-    ['claseDiaAntes', 'El día anterior', 'A las 20 h, con el horario y tu profe'],
+    ['claseDiaAntes', 'El día anterior', nativo ? 'A las 20 h, con el horario y tu profe' : '24 horas antes de la clase'],
     ['claseHoraAntes', 'Una hora antes', 'Con sugerencia de calentamiento'],
   ]],
   ['Cuota', [
     ['cuotaApertura', `Día ${ESCUELA.pagoDesde}: se abre el pago`, 'Ya podés abonar la cuota del mes'],
     ['cuotaPrevia', `Día ${ESCUELA.pagoHasta - 3}: faltan 3 días`, 'Se acerca el vencimiento'],
     ['cuotaVence', `Día ${ESCUELA.pagoHasta}: vence hoy`, 'Último día para pagar'],
-    ['cuotaPendiente', `Día ${ESCUELA.pagoHasta + 5}: si quedó pendiente`, 'Solo si no marcaste que pagaste'],
+    ...(nativo ? [['cuotaPendiente', `Día ${ESCUELA.pagoHasta + 5}: si quedó pendiente`, 'Solo si no marcaste que pagaste']] : []),
   ]],
-  ['Agenda', [
+  ...(nativo ? [['Agenda', [
     ['agenda', 'Actividades', 'El día anterior a las 19 h, de las que marcaste "Avisarme"'],
-  ]],
+  ]]] : []),
   ['Práctica', [
     ['practica', 'Recordatorio diario', 'Para no cortar tu racha'],
   ]],
@@ -1256,21 +1264,26 @@ function listaAvisos(a, conHora = true) {
 function vAvisos() {
   const a = S.get().avisos;
   const activos = Object.entries(a).filter(([k, v]) => k !== 'practicaHora' && v === true).length;
+  if (!nativo) return `<h1>Avisos</h1><p class="sub">${esIOS ? 'En iPhone' : 'En la versión web'} los recordatorios te los da el calendario de tu teléfono. Elegí cuáles querés y agregalos.</p>
+    ${listaAvisos(a)}
+    <div class="botones"><button class="btn" id="ics">${I.calendario.replace('<svg', '<svg stroke="currentColor"')} Agregar a mi calendario</button></div>
+    <p class="chico" style="margin-top:10px">Se crean tus clases de todas las semanas y las fechas de la cuota, con alarma. Si cambiás tus horarios, volvé a tocar este botón (y borrá los eventos viejos del calendario).</p>`;
   return `<h1>Avisos</h1><p class="sub">Activá o desactivá cada recordatorio por separado.</p>
     <p class="chico" style="margin-top:6px">${activos} aviso${activos === 1 ? '' : 's'} activo${activos === 1 ? '' : 's'}</p>
     ${listaAvisos(a)}
     <div class="botones"><button class="btn sec" id="probar">Probar un aviso</button></div>`;
 }
 montajes['escuela/avisos'] = () => {
+  const ics = $('#ics'); if (ics) ics.onclick = () => abrirIcs(icsMisAvisos());
   $$('[data-av]').forEach((c) => c.onchange = async () => {
-    if (c.checked) { await N.prepararCanal(); const p = await N.pedirPermiso(); if (p === 'denied') { toast('Activá las notificaciones en Ajustes del teléfono'); } }
+    if (c.checked && nativo) { await N.prepararCanal(); const p = await N.pedirPermiso(); if (p === 'denied') { toast('Activá las notificaciones en Ajustes del teléfono'); } }
     S.update((s) => { s.avisos[c.dataset.av] = c.checked; });
     await N.reprogramar();
-    toast(c.checked ? 'Aviso activado' : 'Aviso desactivado');
+    toast(nativo ? (c.checked ? 'Aviso activado' : 'Aviso desactivado') : 'Guardado. Tocá "Agregar a mi calendario" para aplicarlo');
     const y = window.scrollY; render(); window.scrollTo(0, y);
   });
   const ph = $('#phora'); if (ph) ph.onchange = async (e) => { S.update((s) => { s.avisos.practicaHora = e.target.value; }); await N.reprogramar(); };
-  $('#probar').onclick = async () => { await N.prepararCanal(); await N.pedirPermiso(); await N.probar(); };
+  const pr = $('#probar'); if (pr) pr.onclick = async () => { await N.prepararCanal(); await N.pedirPermiso(); await N.probar(); };
 };
 
 // ============================================================

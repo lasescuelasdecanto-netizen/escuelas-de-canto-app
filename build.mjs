@@ -1,6 +1,6 @@
 // Arma la carpeta www/ que Capacitor mete dentro del APK.
 import { build } from 'esbuild';
-import { mkdirSync, copyFileSync, rmSync, readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, copyFileSync, rmSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const repo = process.env.GITHUB_REPOSITORY || process.env.APP_REPO || '';
@@ -26,4 +26,9 @@ for (const w of [400, 500, 600, 700]) {
 }
 mkdirSync('www/piano', { recursive: true });
 for (const f of readdirSync('src/piano')) copyFileSync(`src/piano/${f}`, `www/piano/${f}`);
+for (const f of readdirSync('src/web')) {
+  const dest = `www/${f}`;
+  if (f === 'sw.js') writeFileSync(dest, readFileSync(`src/web/${f}`, 'utf8').replace('__VERSION__', `${pkg.version}-${Date.now()}`));
+  else copyFileSync(`src/web/${f}`, dest);
+}
 console.log('www/ listo');
