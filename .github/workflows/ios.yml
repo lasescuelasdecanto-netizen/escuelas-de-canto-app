@@ -1,0 +1,46 @@
+# Compila la versión de iPhone en una Mac de GitHub.
+# Hoy: compilación de prueba (sin firma) para verificar que todo anda.
+# Cuando exista la cuenta de Apple Developer se suma la firma y la subida a TestFlight / App Store.
+name: Compilar iPhone
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'novedades.json'
+      - 'actividades.json'
+      - '**.md'
+  workflow_dispatch:
+
+concurrency:
+  group: ios
+  cancel-in-progress: true
+
+jobs:
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Armar la app
+        run: |
+          npm ci
+          npm run build
+          npx cap sync ios
+
+      - name: Compilar para iPhone (prueba, sin firma)
+        working-directory: ios/App
+        run: |
+          VERSION=$(node -p "require('../../package.json').version")
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            build | tail -n 40
+          ls build/Build/Products/Release-iphoneos/
